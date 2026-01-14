@@ -37,27 +37,27 @@ namespace PerfectionStats
         public PerfectionStatsMenu(int x, int y, int width, int height)
             : base(x, y, width, height, true)
         {
-            // Close button - más grande
+            // Close button - mucho más grande, acorde al menú de opciones
             closeButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 72, yPositionOnScreen + 8, 64, 64),
+                new Rectangle(xPositionOnScreen + width - 80, yPositionOnScreen + 16, 80, 80),
                 Game1.mouseCursors,
                 new Rectangle(337, 494, 12, 12),
-                4f
+                5f
             );
 
-            // Scroll arrows - más grandes
+            // Scroll arrows - mucho más grandes y visibles
             scrollUpButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width + 8, yPositionOnScreen + 120, 88, 88),
+                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + 140, 112, 112),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
-                6f // Escala aumentada
+                8f // Escala muy aumentada para mayor visibilidad
             );
 
             scrollDownButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width + 8, yPositionOnScreen + height - OverallSectionHeight - 160, 88, 88),
+                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + height - OverallSectionHeight - 180, 112, 112),
                 Game1.mouseCursors,
                 new Rectangle(421, 472, 11, 12),
-                6f // Escala aumentada
+                8f // Escala muy aumentada para mayor visibilidad
             );
 
             DetectInstalledMods();

@@ -30,27 +30,27 @@ namespace PerfectionStats
             this.categoryName = categoryName;
             this.items = items ?? new List<DetailItem>();
 
-            // Close button
+            // Close button - mucho más grande
             closeButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 72, yPositionOnScreen + 8, 64, 64),
+                new Rectangle(xPositionOnScreen + width - 80, yPositionOnScreen + 16, 80, 80),
                 Game1.mouseCursors,
                 new Rectangle(337, 494, 12, 12),
-                4f
+                5f
             );
 
-            // Scroll buttons
+            // Scroll buttons - mucho más grandes
             scrollUpButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width + 8, yPositionOnScreen + 120, 88, 88),
+                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + 140, 112, 112),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
-                6f
+                8f
             );
 
             scrollDownButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width + 8, yPositionOnScreen + height - 120, 88, 88),
+                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + height - 140, 112, 112),
                 Game1.mouseCursors,
                 new Rectangle(421, 472, 11, 12),
-                6f
+                8f
             );
         }
 
