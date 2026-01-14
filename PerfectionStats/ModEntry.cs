@@ -46,8 +46,8 @@ namespace PerfectionStats
                 {
                     var lastTab = tabs[tabs.Count - 1];
                     
-                    // Position button right after the last tab with same spacing
-                    int buttonX = lastTab.bounds.X + lastTab.bounds.Width + 8; // 8 pixels spacing like other tabs
+                    // Position button right after the last tab with smaller spacing (2 pixels instead of 8)
+                    int buttonX = lastTab.bounds.X + lastTab.bounds.Width + 2;
                     int buttonY = lastTab.bounds.Y;
                     
                     perfectionButton = new ClickableTextureComponent(
@@ -72,12 +72,16 @@ namespace PerfectionStats
 
         private void Display_RenderedActiveMenu(object sender, RenderedActiveMenuEventArgs e)
         {
-            // Draw the button if GameMenu is active
-            if (Game1.activeClickableMenu is GameMenu && perfectionButton != null)
+            // Draw the button on all tabs EXCEPT the map tab (index 3)
+            if (Game1.activeClickableMenu is GameMenu gameMenu && perfectionButton != null)
             {
+                // Don't draw on map tab (currentTab == 3)
+                if (gameMenu.currentTab == 3)
+                    return;
+
                 bool isHovering = perfectionButton.containsPoint(Game1.getMouseX(), Game1.getMouseY());
                 
-                // Draw button background box
+                // Draw button background box (same style as other tabs)
                 IClickableMenu.drawTextureBox(
                     e.SpriteBatch,
                     Game1.mouseCursors,
@@ -93,7 +97,7 @@ namespace PerfectionStats
                 
                 // Draw star icon centered in the button
                 Vector2 iconPosition = new Vector2(
-                    perfectionButton.bounds.X + (perfectionButton.bounds.Width / 2) - 16, // 16 = half of icon size (8*4 scale / 2)
+                    perfectionButton.bounds.X + (perfectionButton.bounds.Width / 2) - 16,
                     perfectionButton.bounds.Y + (perfectionButton.bounds.Height / 2) - 16
                 );
                 
@@ -119,9 +123,13 @@ namespace PerfectionStats
 
         private void Input_ButtonPressedForButton(object sender, ButtonPressedEventArgs e)
         {
-            // Check if clicked on button
-            if (Game1.activeClickableMenu is GameMenu && perfectionButton != null)
+            // Check if clicked on button (skip on map tab)
+            if (Game1.activeClickableMenu is GameMenu gameMenu && perfectionButton != null)
             {
+                // Don't allow clicking on map tab
+                if (gameMenu.currentTab == 3)
+                    return;
+
                 if (e.Button == SButton.MouseLeft)
                 {
                     int mouseX = Game1.getMouseX();
