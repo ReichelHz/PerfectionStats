@@ -14,6 +14,7 @@ namespace PerfectionStats
         internal Config config;
         internal ITranslationHelper i18n => Helper.Translation;
         private ClickableTextureComponent perfectionButton;
+        private Texture2D trophyTexture;
         private const int ButtonSize = 64;
 
         public override void Entry(IModHelper helper)
@@ -24,6 +25,10 @@ namespace PerfectionStats
             Monitor.Log(startingMessage, LogLevel.Trace);
 
             config = helper.ReadConfig<Config>();
+
+            // Load trophy texture
+            trophyTexture = helper.ModContent.Load<Texture2D>("assets/trofeo.png");
+            Monitor.Log("Trophy texture loaded", LogLevel.Debug);
 
             helper.Events.Input.ButtonPressed += Input_ButtonPressed;
             helper.Events.Display.MenuChanged += Display_MenuChanged;
@@ -52,9 +57,9 @@ namespace PerfectionStats
                     
                     perfectionButton = new ClickableTextureComponent(
                         new Rectangle(buttonX, buttonY, ButtonSize, ButtonSize),
-                        Game1.mouseCursors,
-                        new Rectangle(346, 392, 8, 8), // Star icon
-                        4f
+                        trophyTexture,
+                        new Rectangle(0, 0, trophyTexture.Width, trophyTexture.Height),
+                        1f
                     )
                     {
                         myID = 99999,
@@ -95,20 +100,29 @@ namespace PerfectionStats
                     false
                 );
                 
-                // Draw star icon centered in the button
-                Vector2 iconPosition = new Vector2(
-                    perfectionButton.bounds.X + (perfectionButton.bounds.Width / 2) - 16,
-                    perfectionButton.bounds.Y + (perfectionButton.bounds.Height / 2) - 16
+                // Calculate trophy icon position to center it in the button with offset adjustment
+                float trophyScale = (float)(ButtonSize - 16) / trophyTexture.Width; // Leave 8 pixels margin on each side
+                int scaledWidth = (int)(trophyTexture.Width * trophyScale);
+                int scaledHeight = (int)(trophyTexture.Height * trophyScale);
+                
+                // Adjust position with offset to center properly (move right and down slightly)
+                int offsetX = 3; // Move 3 pixels to the right
+                int offsetY = 3; // Move 3 pixels down
+                
+                Vector2 trophyPosition = new Vector2(
+                    perfectionButton.bounds.X + (ButtonSize - scaledWidth) / 2 + offsetX,
+                    perfectionButton.bounds.Y + (ButtonSize - scaledHeight) / 2 + offsetY
                 );
                 
+                // Draw trophy icon
                 e.SpriteBatch.Draw(
-                    Game1.mouseCursors,
-                    iconPosition,
-                    new Rectangle(346, 392, 8, 8),
-                    isHovering ? Color.White : Color.LightGray,
+                    trophyTexture,
+                    trophyPosition,
+                    new Rectangle(0, 0, trophyTexture.Width, trophyTexture.Height),
+                    isHovering ? Color.White : new Color(220, 220, 220),
                     0f,
                     Vector2.Zero,
-                    4f,
+                    trophyScale,
                     SpriteEffects.None,
                     0.88f
                 );
