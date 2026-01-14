@@ -1,0 +1,22 @@
+{
+  "VanillaCategories": {
+    "FishSpeciesTotalCount": 62,
+    "CookingRecipesTotalCount": 82,
+    "CraftingRecipesTotalCount": 104,
+    "MuseumItemsTotalCount": 95,
+    "FriendshipsTotalCount": 25,
+    "CropsGrownTotalCount": 26,
+    "ForageablesFoundTotalCount": 20
+  },
+  "SVECategories": {
+    "SVEFishSpeciesTotalCount": 25,
+    "SVENPCsTotalCount": 8,
+    "SVEArtifactsTotalCount": 12,
+    "SVECropsTotalCount": 15
+  },
+  "RidesideCategories": {
+    "RidesideNPCsTotalCount": 12,
+    "RidesideUniqueItemsTotalCount": 18,
+    "RidesideQuestsTotalCount": 20
+  }
+}
