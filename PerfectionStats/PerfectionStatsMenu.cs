@@ -34,6 +34,62 @@ namespace PerfectionStats
             public int GetPercentage() => Total > 0 ? (int)(GetProgress() * 100) : 0;
         }
 
+        // NEW: Fish data model - single source of truth
+        private class FishData
+        {
+            public int TotalCount { get; set; }
+            public int CaughtCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Cooking recipe data model - single source of truth
+        private class CookingRecipeData
+        {
+            public int TotalCount { get; set; }
+            public int CookedCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Crafting recipe data model - single source of truth
+        private class CraftingRecipeData
+        {
+            public int TotalCount { get; set; }
+            public int CraftedCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Museum item data model - single source of truth
+        private class MuseumItemData
+        {
+            public int TotalCount { get; set; }
+            public int DonatedCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Friendship data model - single source of truth
+        private class FriendshipData
+        {
+            public int TotalCount { get; set; }
+            public int BestFriendsCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Crops data model - single source of truth
+        private class CropsData
+        {
+            public int TotalCount { get; set; }
+            public int GrownCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
+        // NEW: Forageables data model - single source of truth
+        private class ForageablesData
+        {
+            public int TotalCount { get; set; }
+            public int FoundCount { get; set; }
+            public List<CategoryDetailsMenu.DetailItem> DetailItems { get; set; }
+        }
+
         public PerfectionStatsMenu(int x, int y, int width, int height)
             : base(x, y, width, height, true)
         {
@@ -90,14 +146,35 @@ namespace PerfectionStats
 
             var config = ModEntry.Instance.Helper.ReadConfig<ModConfig>();
 
+            // Get fish data using single source of truth
+            var fishData = GetFishData();
+
+            // Get cooking recipe data using single source of truth
+            var cookingData = GetCookingRecipeData();
+
+            // Get crafting recipe data using single source of truth
+            var craftingData = GetCraftingRecipeData();
+
+            // Get museum item data using single source of truth
+            var museumData = GetMuseumItemData();
+
+            // Get friendship data using single source of truth
+            var friendshipData = GetFriendshipData();
+
+            // Get crops data using single source of truth
+            var cropsData = GetCropsData();
+
+            // Get forageables data using single source of truth
+            var forageablesData = GetForageablesData();
+
             // ===== VANILLA STARDEW VALLEY =====
-            categories.Add(new ProgressCategory { Name = "Fish Species", Completed = GetFishCaught(), Total = config.VanillaCategories.FishSpeciesTotalCount });
-            categories.Add(new ProgressCategory { Name = "Cooking Recipes", Completed = farmer.recipesCooked.Count(), Total = config.VanillaCategories.CookingRecipesTotalCount });
-            categories.Add(new ProgressCategory { Name = "Crafting Recipes", Completed = farmer.craftingRecipes.Values.Count(), Total = config.VanillaCategories.CraftingRecipesTotalCount });
-            categories.Add(new ProgressCategory { Name = "Museum Items", Completed = GetMuseumItems(), Total = config.VanillaCategories.MuseumItemsTotalCount });
-            categories.Add(new ProgressCategory { Name = "Friendships (8+ Hearts)", Completed = GetBestFriends(), Total = config.VanillaCategories.FriendshipsTotalCount });
-            categories.Add(new ProgressCategory { Name = "Crops Grown", Completed = GetCropsGrown(), Total = config.VanillaCategories.CropsGrownTotalCount });
-            categories.Add(new ProgressCategory { Name = "Forageables", Completed = GetForageablesFound(), Total = config.VanillaCategories.ForageablesFoundTotalCount });
+            categories.Add(new ProgressCategory { Name = "Fish Species", Completed = fishData.CaughtCount, Total = fishData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Cooking Recipes", Completed = cookingData.CookedCount, Total = cookingData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Crafting Recipes", Completed = craftingData.CraftedCount, Total = craftingData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Museum Items", Completed = museumData.DonatedCount, Total = museumData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Friendships (8+ Hearts)", Completed = friendshipData.BestFriendsCount, Total = friendshipData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Crops Grown", Completed = cropsData.GrownCount, Total = cropsData.TotalCount });
+            categories.Add(new ProgressCategory { Name = "Forageables", Completed = forageablesData.FoundCount, Total = forageablesData.TotalCount });
 
             // ===== STARDEW VALLEY EXPANDED =====
             if (hasSVE)
@@ -111,38 +188,382 @@ namespace PerfectionStats
             // ===== RIDGESIDE VILLAGE =====
             if (hasRideside)
             {
-                categories.Add(new ProgressCategory { Name = "Ridgeside: NPCs Met", Completed = GetRidesideFriends(), Total = config.RidesideCategories.RidesideNPCsTotalCount });
-                categories.Add(new ProgressCategory { Name = "Ridgeside: Items", Completed = GetRidesideItems(), Total = config.RidesideCategories.RidesideUniqueItemsTotalCount });
-                categories.Add(new ProgressCategory { Name = "Ridgeside: Quests", Completed = GetRidesideQuests(), Total = config.RidesideCategories.RidesideQuestsTotalCount });
+                categories.Add(new ProgressCategory { Name = "Rideside: NPCs Met", Completed = GetRidesideFriends(), Total = config.RidesideCategories.RidesideNPCsTotalCount });
+                categories.Add(new ProgressCategory { Name = "Rideside: Items", Completed = GetRidesideItems(), Total = config.RidesideCategories.RidesideUniqueItemsTotalCount });
+                categories.Add(new ProgressCategory { Name = "Rideside: Quests", Completed = GetRidesideQuests(), Total = config.RidesideCategories.RidesideQuestsTotalCount });
             }
 
             UpdateButtonPositions();
         }
 
-        private int GetFishCaught() => Game1.player.fishCaught != null ? Game1.player.fishCaught.Keys.Count() : 0;
-        
-        private int GetMuseumItems()
+        // NEW: Single source of truth for fish data
+        private FishData GetFishData()
         {
-            // Obtener items donados al museo correctamente
-            var museum = Game1.locations.OfType<StardewValley.Locations.LibraryMuseum>().FirstOrDefault();
-            if (museum != null)
+            var caughtFishIds = new HashSet<int>(
+                Game1.player.fishCaught?.Keys.Select(k => int.Parse(k)) ?? Enumerable.Empty<int>()
+            );
+            
+            // Definitive list of all vanilla catchable fish
+            var allFish = new Dictionary<int, string>
             {
-                return museum.museumPieces.Count();
-            }
-            return 0;
+                {128, "Pufferfish"}, {129, "Anchovy"}, {130, "Tuna"}, {131, "Sardine"}, {132, "Bream"},
+                {136, "Largemouth Bass"}, {137, "Smallmouth Bass"}, {138, "Rainbow Trout"}, {139, "Salmon"},
+                {140, "Walleye"}, {141, "Perch"}, {142, "Carp"}, {143, "Catfish"}, {144, "Pike"},
+                {145, "Sunfish"}, {146, "Red Mullet"}, {147, "Herring"}, {148, "Eel"}, {149, "Octopus"},
+                {150, "Red Snapper"}, {151, "Squid"}, {154, "Sea Cucumber"}, {155, "Super Cucumber"},
+                {156, "Ghostfish"}, {158, "Stonefish"}, {159, "Crimsonfish"}, {160, "Angler"},
+                {161, "Ice Pip"}, {162, "Lava Eel"}, {163, "Legend"}, {164, "Sandfish"}, {165, "Scorpion Carp"},
+                {682, "Mutant Carp"}, {698, "Sturgeon"}, {699, "Tiger Trout"}, {700, "Bullhead"},
+                {701, "Tilapia"}, {702, "Chub"}, {704, "Dorado"}, {705, "Albacore"}, {706, "Shad"},
+                {707, "Lingcod"}, {708, "Halibut"}, {715, "Lobster"}, {716, "Crayfish"}, {717, "Crab"},
+                {718, "Cockle"}, {719, "Mussel"}, {720, "Shrimp"}, {721, "Snail"}, {722, "Periwinkle"},
+                {723, "Oyster"}, {734, "Woodskip"}, {775, "Glacierfish"}, {795, "Void Salmon"},
+                {796, "Slimejack"}, {798, "Midnight Squid"}, {799, "Spook Fish"}, {800, "Blobfish"}
+            };
+
+            // Calculate caught count
+            int caughtCount = allFish.Keys.Count(fishId => caughtFishIds.Contains(fishId));
+
+            // Build detail items list
+            var detailItems = allFish
+                .OrderBy(f => f.Value)
+                .Select(fish => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = fish.Value,
+                    IsCompleted = caughtFishIds.Contains(fish.Key)
+                })
+                .ToList();
+
+            return new FishData
+            {
+                TotalCount = allFish.Count,
+                CaughtCount = caughtCount,
+                DetailItems = detailItems
+            };
         }
-        
-        private int GetBestFriends()
+
+        // NEW: Single source of truth for cooking recipe data
+        private CookingRecipeData GetCookingRecipeData()
         {
+            var cookedRecipes = new HashSet<string>(
+                Game1.player.cookingRecipes?.Keys ?? Enumerable.Empty<string>()
+            );
+            
+            // Get all available cooking recipes from game data
+            var allRecipes = CraftingRecipe.cookingRecipes;
+            
+            if (allRecipes == null || allRecipes.Count == 0)
+            {
+                // Fallback if data not loaded
+                return new CookingRecipeData
+                {
+                    TotalCount = 0,
+                    CookedCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
+
+            // Calculate cooked count
+            int cookedCount = allRecipes.Keys.Count(recipeName => cookedRecipes.Contains(recipeName));
+
+            // Build detail items list
+            var detailItems = allRecipes.Keys
+                .OrderBy(recipeName => recipeName)
+                .Select(recipeName => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = recipeName,
+                    IsCompleted = cookedRecipes.Contains(recipeName)
+                })
+                .ToList();
+
+            return new CookingRecipeData
+            {
+                TotalCount = allRecipes.Count,
+                CookedCount = cookedCount,
+                DetailItems = detailItems
+            };
+        }
+
+        // NEW: Single source of truth for crafting recipe data
+        private CraftingRecipeData GetCraftingRecipeData()
+        {
+            var craftedRecipes = new HashSet<string>(
+                Game1.player.craftingRecipes?.Keys ?? Enumerable.Empty<string>()
+            );
+            
+            // Get all available crafting recipes from game data
+            var allRecipes = CraftingRecipe.craftingRecipes;
+            
+            if (allRecipes == null || allRecipes.Count == 0)
+            {
+                // Fallback if data not loaded
+                return new CraftingRecipeData
+                {
+                    TotalCount = 0,
+                    CraftedCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
+
+            // Calculate crafted count
+            int craftedCount = allRecipes.Keys.Count(recipeName => craftedRecipes.Contains(recipeName));
+
+            // Build detail items list
+            var detailItems = allRecipes.Keys
+                .OrderBy(recipeName => recipeName)
+                .Select(recipeName => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = recipeName,
+                    IsCompleted = craftedRecipes.Contains(recipeName)
+                })
+                .ToList();
+
+            return new CraftingRecipeData
+            {
+                TotalCount = allRecipes.Count,
+                CraftedCount = craftedCount,
+                DetailItems = detailItems
+            };
+        }
+
+        // NEW: Single source of truth for museum item data
+        private MuseumItemData GetMuseumItemData()
+        {
+            var allMuseumItems = new Dictionary<int, string>();
+            var donatedItemIds = new HashSet<int>();
+            
             try
             {
-                var friendships = Game1.player.friendshipData;
-                return friendships.Values.Count(f => f.Points >= 2000);
+                // Get the museum location
+                var museum = Game1.locations.OfType<StardewValley.Locations.LibraryMuseum>().FirstOrDefault();
+                
+                if (museum != null && museum.museumPieces != null)
+                {
+                    // Get donated item IDs from museum pieces
+                    // museumPieces is NetStringDictionary<Vector2, string>
+                    foreach (var position in museum.museumPieces.Keys)
+                    {
+                        string itemIdString = museum.museumPieces[position];
+                        if (int.TryParse(itemIdString, out int itemId))
+                        {
+                            donatedItemIds.Add(itemId);
+                        }
+                    }
+                    
+                    ModEntry.Instance.Monitor.Log($"Found {donatedItemIds.Count} donated items", LogLevel.Debug);
+                }
+                else
+                {
+                    ModEntry.Instance.Monitor.Log("Museum location not found or has no pieces collection", LogLevel.Debug);
+                }
+                
+                // Iterate through all possible item IDs to find artifacts and minerals
+                // Vanilla Stardew Valley uses IDs 0-1000 for most items
+                for (int itemId = 0; itemId < 1000; itemId++)
+                {
+                    try
+                    {
+                        // Create a temporary object using the correct constructor
+                        // Object(string itemId, int initialStack, bool isRecipe, int price, int quality)
+                        var obj = new StardewValley.Object(itemId.ToString(), 1, false, -1, 0);
+                        
+                        // Check if this is an artifact or mineral
+                        // Use the Type property which returns the type string
+                        if (obj.Type != null && (obj.Type.Equals("Arch") || obj.Type.Equals("Minerals")))
+                        {
+                            allMuseumItems[itemId] = obj.DisplayName;
+                        }
+                    }
+                    catch
+                    {
+                        // Skip invalid item IDs
+                        continue;
+                    }
+                }
+                
+                ModEntry.Instance.Monitor.Log($"Found {allMuseumItems.Count} donatable museum items", LogLevel.Debug);
             }
-            catch { return 0; }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading museum items: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If we couldn't load any items, return empty data
+            if (allMuseumItems.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No museum items found - returning empty data", LogLevel.Warn);
+                return new MuseumItemData
+                {
+                    TotalCount = 0,
+                    DonatedCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
+
+            // Calculate donated count
+            int donatedCount = allMuseumItems.Keys.Count(itemId => donatedItemIds.Contains(itemId));
+
+            // Build detail items list
+            var detailItems = allMuseumItems
+                .OrderBy(item => item.Value)
+                .Select(item => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = item.Value,
+                    IsCompleted = donatedItemIds.Contains(item.Key)
+                })
+                .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Museum stats: {donatedCount}/{allMuseumItems.Count} items donated", LogLevel.Debug);
+
+            return new MuseumItemData
+            {
+                TotalCount = allMuseumItems.Count,
+                DonatedCount = donatedCount,
+                DetailItems = detailItems
+            };
         }
-        private int GetCropsGrown() => Math.Min(Game1.player.farmingLevel.Value * 2, 26);
-        private int GetForageablesFound() => Math.Min(Game1.player.foragingLevel.Value, 20);
+
+        // NEW: Single source of truth for friendship data
+        private FriendshipData GetFriendshipData()
+        {
+            var playerFriendships = Game1.player.friendshipData;
+            
+            // Definitive list of all vanilla befriendable NPCs
+            var allNPCs = new List<string>
+            {
+                "Abigail", "Alex", "Caroline", "Clint", "Demetrius", "Dwarf", "Elliott",
+                "Emily", "Evelyn", "George", "Gus", "Haley", "Harvey", "Jas", "Jodi",
+                "Kent", "Krobus", "Leah", "Lewis", "Linus", "Marnie", "Maru", "Pam",
+                "Penny", "Pierre", "Robin", "Sam", "Sandy", "Sebastian", "Shane", "Vincent",
+                "Willy", "Wizard"
+            };
+
+            // Calculate best friends count (8+ hearts = 2000+ points)
+            int bestFriendsCount = 0;
+            foreach (var npc in allNPCs)
+            {
+                if (playerFriendships.ContainsKey(npc) && playerFriendships[npc].Points >= 2000)
+                {
+                    bestFriendsCount++;
+                }
+            }
+
+            // Build detail items list
+            var detailItems = allNPCs
+                .OrderBy(npc => npc)
+                .Select(npc => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = npc,
+                    IsCompleted = playerFriendships.ContainsKey(npc) && playerFriendships[npc].Points >= 2000
+                })
+                .ToList();
+
+            return new FriendshipData
+            {
+                TotalCount = allNPCs.Count,
+                BestFriendsCount = bestFriendsCount,
+                DetailItems = detailItems
+            };
+        }
+
+        // NEW: Single source of truth for crops data
+        private CropsData GetCropsData()
+        {
+            var shippedItems = Game1.player.basicShipped;
+            
+            // Definitive list of all vanilla crops tracked for perfection
+            var allCrops = new Dictionary<int, string>
+            {
+                // Spring Crops
+                {24, "Parsnip"}, {192, "Potato"}, {190, "Cauliflower"}, {188, "Green Bean"},
+                {250, "Kale"}, {252, "Rhubarb"}, {273, "Rice"}, {256, "Tomato"},
+                {248, "Garlic"}, {400, "Strawberry"}, {433, "Coffee Bean"},
+                
+                // Summer Crops
+                {254, "Melon"}, {260, "Hot Pepper"}, {262, "Wheat"}, {264, "Radish"},
+                {266, "Red Cabbage"}, {268, "Starfruit"}, {270, "Corn"}, {272, "Eggplant"},
+                {274, "Artichoke"}, {276, "Pumpkin"}, {278, "Bok Choy"}, {280, "Yam"},
+                {304, "Hops"}, {398, "Grape"}, {376, "Poppy"}, {591, "Tulip"},
+                
+                // Fall Crops
+                {284, "Beet"}, {300, "Amaranth"}, {282, "Cranberries"}, {595, "Fairy Rose"},
+                {593, "Summer Spangle"}, {597, "Blue Jazz"}, {421, "Sunflower"},
+                
+                // Special
+                {454, "Ancient Fruit"}, {427, "Tulip Bulb"}, {830, "Taro Root"}
+            };
+
+            // Calculate grown count (items that have been shipped at least once)
+            int grownCount = allCrops.Keys.Count(cropId => 
+                shippedItems.ContainsKey(cropId.ToString()) && shippedItems[cropId.ToString()] > 0);
+
+            // Build detail items list
+            var detailItems = allCrops
+                .OrderBy(crop => crop.Value)
+                .Select(crop => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = crop.Value,
+                    IsCompleted = shippedItems.ContainsKey(crop.Key.ToString()) && shippedItems[crop.Key.ToString()] > 0
+                })
+                .ToList();
+
+            return new CropsData
+            {
+                TotalCount = allCrops.Count,
+                GrownCount = grownCount,
+                DetailItems = detailItems
+            };
+        }
+
+        // NEW: Single source of truth for forageables data
+        private ForageablesData GetForageablesData()
+        {
+            var shippedItems = Game1.player.basicShipped;
+            
+            // Definitive list of all vanilla forageables tracked for perfection
+            var allForageables = new Dictionary<int, string>
+            {
+                // Spring Forageables
+                {16, "Wild Horseradish"}, {18, "Daffodil"}, {20, "Leek"}, {22, "Dandelion"},
+                
+                // Summer Forageables
+                {396, "Spice Berry"}, {398, "Grape"}, {402, "Sweet Pea"},
+                
+                // Fall Forageables
+                {281, "Chanterelle"}, {404, "Common Mushroom"}, {406, "Wild Plum"},
+                {408, "Hazelnut"}, {410, "Blackberry"},
+                
+                // Winter Forageables
+                {412, "Winter Root"}, {414, "Crystal Fruit"}, {416, "Snow Yam"},
+                {418, "Crocus"},
+                
+                // Beach Forageables
+                {372, "Clam"}, {718, "Cockle"}, {719, "Mussel"}, {723, "Oyster"},
+                {393, "Coral"}, {397, "Sea Urchin"}, {394, "Rainbow Shell"}
+            };
+
+            // Calculate found count (items that have been shipped at least once)
+            int foundCount = allForageables.Keys.Count(itemId => 
+                shippedItems.ContainsKey(itemId.ToString()) && shippedItems[itemId.ToString()] > 0);
+
+            // Build detail items list
+            var detailItems = allForageables
+                .OrderBy(item => item.Value)
+                .Select(item => new CategoryDetailsMenu.DetailItem
+                {
+                    Name = item.Value,
+                    IsCompleted = shippedItems.ContainsKey(item.Key.ToString()) && shippedItems[item.Key.ToString()] > 0
+                })
+                .ToList();
+
+            return new ForageablesData
+            {
+                TotalCount = allForageables.Count,
+                FoundCount = foundCount,
+                DetailItems = detailItems
+            };
+        }
+
         private int GetSVEFishCaught() => !hasSVE ? 0 : 5;
         private int GetSVEFriends() => !hasSVE ? 0 : 4;
         private int GetSVEArtifacts() => !hasSVE ? 0 : 5;
@@ -460,220 +881,54 @@ namespace PerfectionStats
         {
             List<CategoryDetailsMenu.DetailItem> items = new List<CategoryDetailsMenu.DetailItem>();
 
-            switch (categoryName)
+            // Use single source of truth for fish data
+            if (categoryName == "Fish Species")
             {
-                case "Fish Species":
-                    items = GetFishDetails();
-                    break;
-                case "Cooking Recipes":
-                    items = GetCookingRecipeDetails();
-                    break;
-                case "Crafting Recipes":
-                    items = GetCraftingRecipeDetails();
-                    break;
-                case "Museum Items":
-                    items = GetMuseumItemDetails();
-                    break;
-                case "Friendships (8+ Hearts)":
-                    items = GetFriendshipDetails();
-                    break;
-                case "Crops Grown":
-                    items = GetCropsDetails();
-                    break;
-                case "Forageables":
-                    items = GetForageablesDetails();
-                    break;
-                default:
-                    items.Add(new CategoryDetailsMenu.DetailItem { Name = "Details not available yet", IsCompleted = false });
-                    break;
+                var fishData = GetFishData();
+                items = fishData.DetailItems;
             }
+            else if (categoryName == "Cooking Recipes")
+            {
+                var cookingData = GetCookingRecipeData();
+                items = cookingData.DetailItems;
+            }
+            else if (categoryName == "Crafting Recipes")
+            {
+                var craftingData = GetCraftingRecipeData();
+                items = craftingData.DetailItems;
+            }
+            else if (categoryName == "Museum Items")
+            {
+                var museumData = GetMuseumItemData();
+                items = museumData.DetailItems;
+            }
+            else if (categoryName == "Friendships (8+ Hearts)")
+            {
+                var friendshipData = GetFriendshipData();
+                items = friendshipData.DetailItems;
+            }
+            else if (categoryName == "Crops Grown")
+            {
+                var cropsData = GetCropsData();
+                items = cropsData.DetailItems;
+            }
+            else if (categoryName == "Forageables")
+            {
+                var forageablesData = GetForageablesData();
+                items = forageablesData.DetailItems;
+            }
+            // Add other categories as needed...
 
             Game1.activeClickableMenu = new CategoryDetailsMenu(categoryName, items);
         }
 
-        private List<CategoryDetailsMenu.DetailItem> GetFishDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            var caughtFish = Game1.player.fishCaught?.Keys.Select(k => int.Parse(k)).ToList() ?? new List<int>();
-            
-            // Lista de IDs de peces del juego (principales)
-            var allFish = new Dictionary<int, string>
-            {
-                {128, "Pufferfish"}, {129, "Anchovy"}, {130, "Tuna"}, {131, "Sardine"}, {132, "Bream"},
-                {136, "Largemouth Bass"}, {137, "Smallmouth Bass"}, {138, "Rainbow Trout"}, {139, "Salmon"},
-                {140, "Walleye"}, {141, "Perch"}, {142, "Carp"}, {143, "Catfish"}, {144, "Pike"},
-                {145, "Sunfish"}, {146, "Red Mullet"}, {147, "Herring"}, {148, "Eel"}, {149, "Octopus"},
-                {150, "Red Snapper"}, {151, "Squid"}, {154, "Sea Cucumber"}, {155, "Super Cucumber"},
-                {156, "Ghostfish"}, {158, "Stonefish"}, {159, "Crimsonfish"}, {160, "Angler"},
-                {161, "Ice Pip"}, {162, "Lava Eel"}, {163, "Legend"}, {164, "Sandfish"}, {165, "Scorpion Carp"},
-                {682, "Mutant Carp"}, {698, "Sturgeon"}, {699, "Tiger Trout"}, {700, "Bullhead"},
-                {701, "Tilapia"}, {702, "Chub"}, {704, "Dorado"}, {705, "Albacore"}, {706, "Shad"},
-                {707, "Lingcod"}, {708, "Halibut"}, {715, "Lobster"}, {716, "Crayfish"}, {717, "Crab"},
-                {718, "Cockle"}, {719, "Mussel"}, {720, "Shrimp"}, {721, "Snail"}, {722, "Periwinkle"},
-                {723, "Oyster"}, {734, "Woodskip"}, {775, "Glacierfish"}, {795, "Void Salmon"},
-                {796, "Slimejack"}, {798, "Midnight Squid"}, {799, "Spook Fish"}, {800, "Blobfish"}
-            };
-
-            foreach (var fish in allFish.OrderBy(f => f.Value))
-            {
-                items.Add(new CategoryDetailsMenu.DetailItem
-                {
-                    Name = fish.Value,
-                    IsCompleted = caughtFish.Contains(fish.Key)
-                });
-            }
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetCookingRecipeDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            var knownRecipes = Game1.player.cookingRecipes.Keys.ToList();
-            
-            // Lista de recetas de cocina principales
-            var allRecipes = new List<string>
-            {
-                "Fried Egg", "Omelet", "Pancakes", "Bread", "Tortilla", "Triple Shot Espresso",
-                "Hashbrowns", "Algae Soup", "Pale Broth", "Plum Pudding", "Artichoke Dip",
-                "Stir Fry", "Roasted Hazelnuts", "Pumpkin Pie", "Radish Salad", "Fruit Salad",
-                "Blackberry Cobbler", "Cranberry Candy", "Bruschetta", "Coleslaw", "Fiddlehead Risotto",
-                "Poppyseed Muffin", "Chowder", "Fish Stew", "Escargot", "Lobster Bisque",
-                "Maple Bar", "Crab Cakes", "Shrimp Cocktail", "Tom Kha Soup", "Trout Soup",
-                "Chocolate Cake", "Pink Cake", "Rhubarb Pie", "Cookie", "Spaghetti",
-                "Fried Mushroom", "Salmon Dinner", "Pepper Poppers", "Pizza", "Parsnip Soup",
-                "Maki Roll", "Tortilla", "Red Plate", "Eggplant Parmesan", "Rice Pudding",
-                "Ice Cream", "Blueberry Tart", "Autumn's Bounty", "Pumpkin Soup", "Super Meal",
-                "Cranberry Sauce", "Stuffing", "Farmer's Lunch", "Survival Burger", "Dish O' The Sea",
-                "Miner's Treat", "Roots Platter"
-            };
-
-            foreach (var recipe in allRecipes.OrderBy(r => r))
-            {
-                items.Add(new CategoryDetailsMenu.DetailItem
-                {
-                    Name = recipe,
-                    IsCompleted = knownRecipes.Contains(recipe)
-                });
-            }
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetCraftingRecipeDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            var knownRecipes = Game1.player.craftingRecipes.Keys.ToList();
-            
-            // Lista de recetas de crafteo principales
-            var allRecipes = new List<string>
-            {
-                "Cherry Bomb", "Bomb", "Mega Bomb", "Gate", "Wood Fence", "Stone Fence",
-                "Iron Fence", "Hardwood Fence", "Sprinkler", "Quality Sprinkler", "Iridium Sprinkler",
-                "Mayonnaise Machine", "Bee House", "Preserves Jar", "Cheese Press", "Loom",
-                "Keg", "Oil Maker", "Cask", "Basic Fertilizer", "Quality Fertilizer", "Speed-Gro",
-                "Deluxe Speed-Gro", "Basic Retaining Soil", "Quality Retaining Soil", "Wild Seeds (Sp)",
-                "Wild Seeds (Su)", "Wild Seeds (Fa)", "Wild Seeds (Wi)", "Ancient Seeds",
-                "Grass Starter", "Tea Sapling", "Fiber Seeds", "Wood Floor", "Straw Floor",
-                "Weathered Floor", "Crystal Floor", "Stone Floor", "Wood Path", "Gravel Path",
-                "Cobblestone Path", "Stepping Stone Path", "Crystal Path", "Torch", "Campfire",
-                "Wooden Brazier", "Stone Brazier", "Gold Brazier", "Carved Brazier", "Stump Brazier",
-                "Barrel Brazier", "Skull Brazier", "Marble Brazier", "Wood Lamp-post", "Iron Lamp-post"
-            };
-
-            foreach (var recipe in allRecipes.OrderBy(r => r))
-            {
-                items.Add(new CategoryDetailsMenu.DetailItem
-                {
-                    Name = recipe,
-                    IsCompleted = knownRecipes.Contains(recipe)
-                });
-            }
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetMuseumItemDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            var museum = Game1.locations.OfType<StardewValley.Locations.LibraryMuseum>().FirstOrDefault();
-            var donatedItems = museum?.museumPieces.Values.Select(v => int.Parse(v)).ToList() ?? new List<int>();
-            
-            // Lista simplificada de items del museo
-            var allItems = new Dictionary<int, string>
-            {
-                {96, "Dwarf Scroll I"}, {97, "Dwarf Scroll II"}, {98, "Dwarf Scroll III"}, {99, "Dwarf Scroll IV"},
-                {100, "Chipped Amphora"}, {101, "Arrowhead"}, {103, "Ancient Doll"}, {104, "Elvish Jewelry"},
-                {105, "Chewing Stick"}, {106, "Ornamental Fan"}, {107, "Dinosaur Egg"}, {108, "Rare Disc"},
-                {109, "Ancient Sword"}, {110, "Rusty Spoon"}, {111, "Rusty Spur"}, {112, "Rusty Cog"},
-                {113, "Chicken Statue"}, {114, "Ancient Seed"}, {115, "Prehistoric Tool"}, {120, "Amethyst"},
-                {122, "Aquamarine"}, {124, "Jade"}, {330, "Clay"}, {535, "Geode"}, {536, "Frozen Geode"}
-            };
-
-            foreach (var item in allItems.OrderBy(i => i.Value))
-            {
-                items.Add(new CategoryDetailsMenu.DetailItem
-                {
-                    Name = item.Value,
-                    IsCompleted = donatedItems.Contains(item.Key)
-                });
-            }
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetFriendshipDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            var friendships = Game1.player.friendshipData;
-            
-            var allNPCs = new List<string>
-            {
-                "Abigail", "Alex", "Caroline", "Clint", "Demetrius", "Dwarf", "Elliott",
-                "Emily", "Evelyn", "George", "Gus", "Haley", "Harvey", "Jas", "Jodi",
-                "Kent", "Krobus", "Leah", "Lewis", "Linus", "Marnie", "Maru", "Pam",
-                "Penny", "Pierre", "Robin", "Sam", "Sandy", "Sebastian", "Shane", "Vincent",
-                "Willy", "Wizard"
-            };
-
-            foreach (var npc in allNPCs.OrderBy(n => n))
-            {
-                bool hasHighFriendship = friendships.ContainsKey(npc) && friendships[npc].Points >= 2000;
-                items.Add(new CategoryDetailsMenu.DetailItem
-                {
-                    Name = npc,
-                    IsCompleted = hasHighFriendship
-                });
-            }
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetCropsDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            
-            // Placeholder - necesitarías implementar la lógica real de cultivos
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Parsnip", IsCompleted = true });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Green Bean", IsCompleted = true });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Cauliflower", IsCompleted = false });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Potato", IsCompleted = true });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Details in development", IsCompleted = false });
-
-            return items;
-        }
-
-        private List<CategoryDetailsMenu.DetailItem> GetForageablesDetails()
-        {
-            var items = new List<CategoryDetailsMenu.DetailItem>();
-            
-            // Placeholder - necesitarías implementar la lógica real
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Wild Horseradish", IsCompleted = true });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Daffodil", IsCompleted = true });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Leek", IsCompleted = false });
-            items.Add(new CategoryDetailsMenu.DetailItem { Name = "Details in development", IsCompleted = false });
-
-            return items;
-        }
+        // REMOVED: GetFishDetails() - replaced by GetFishData()
+        // REMOVED: GetCookingRecipeDetails() - replaced by GetCookingRecipeData()
+        // REMOVED: GetCraftingRecipeDetails() - replaced by GetCraftingRecipeData()
+        // REMOVED: GetMuseumItemDetails() - replaced by GetMuseumItemData()
+        // REMOVED: GetBestFriends() - replaced by GetFriendshipData()
+        // REMOVED: GetFriendshipDetails() - replaced by GetFriendshipData()
+        // REMOVED: GetCropsDetails() - replaced by GetCropsData()
+        // REMOVED: GetForageablesDetails() - replaced by GetForageablesData()
     }
 }
