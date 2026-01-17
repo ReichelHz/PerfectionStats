@@ -30,7 +30,7 @@ namespace PerfectionStats
             this.categoryName = categoryName;
             this.items = items ?? new List<DetailItem>();
 
-            // Close button - mucho más grande
+            // Close button - larger size
             closeButton = new ClickableTextureComponent(
                 new Rectangle(xPositionOnScreen + width - 80, yPositionOnScreen + 16, 80, 80),
                 Game1.mouseCursors,
@@ -38,7 +38,7 @@ namespace PerfectionStats
                 5f
             );
 
-            // Scroll buttons - mucho más grandes
+            // Scroll buttons - large and visible
             scrollUpButton = new ClickableTextureComponent(
                 new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + 140, 112, 112),
                 Game1.mouseCursors,
@@ -74,7 +74,7 @@ namespace PerfectionStats
             // Draw completion status
             int completed = items.Count(i => i.IsCompleted);
             int total = items.Count;
-            string statusText = $"{completed} / {total} Completed";
+            string statusText = UIStrings.FormatCompletionStatus(completed, total);
             Vector2 statusSize = Game1.smallFont.MeasureString(statusText);
             var statusPos = new Vector2(xPositionOnScreen + (width - statusSize.X) / 2, titlePos.Y + titleSize.Y + 8);
             Utility.drawTextWithShadow(b, statusText, Game1.smallFont, statusPos, new Color(120, 78, 36));
