@@ -7,9 +7,9 @@ namespace PerfectionStats
     /// </summary>
     internal static class UIStrings
     {
-        // Main menu
-        public const string MenuTitle = "Perfection Tracker";
-        public const string OverallPerfectionLabel = "OVERALL PERFECTION";
+        // Main menu - vanilla style title
+        public const string MenuTitle = "Perfection Stats";
+        public const string OverallPerfectionLabel = "PERFECTION";
 
         // Vanilla categories - EXACT standard labels
         public const string FishSpecies = "Fish Species";

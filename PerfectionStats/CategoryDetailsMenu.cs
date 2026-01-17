@@ -2,6 +2,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using StardewValley;
 using StardewValley.Menus;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -17,6 +18,19 @@ namespace PerfectionStats
         private ClickableTextureComponent scrollDownButton;
         private const int ItemHeight = 36;
         private const int ItemsPerPage = 10;
+        
+        // Fixed frame dimensions
+        private const int FixedMenuWidth = 800;
+        private const int FixedMenuHeight = 600;
+        
+        // Content margins
+        private const int ContentMarginLeft = 64;
+        private const int ContentMarginTop = 120; // After title and status
+        
+        // Vanilla scrollbar
+        private Rectangle scrollBarTrack;
+        private Rectangle scrollBarThumb;
+        private bool scrolling = false; // Track if dragging scrollbar
 
         public class DetailItem
         {
@@ -25,33 +39,68 @@ namespace PerfectionStats
         }
 
         public CategoryDetailsMenu(string categoryName, List<DetailItem> items)
-            : base(Game1.viewport.Width / 2 - 400, Game1.viewport.Height / 2 - 300, 800, 600)
+            : base(
+                Game1.uiViewport.Width / 2 - FixedMenuWidth / 2,
+                Game1.uiViewport.Height / 2 - FixedMenuHeight / 2,
+                FixedMenuWidth,
+                FixedMenuHeight)
         {
             this.categoryName = categoryName;
             this.items = items ?? new List<DetailItem>();
 
-            // Close button - larger size
+            // Close button - outside top-right corner
             closeButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 80, yPositionOnScreen + 16, 80, 80),
+                new Rectangle(
+                    xPositionOnScreen + width + 8,
+                    yPositionOnScreen + 8,
+                    64,
+                    64
+                ),
                 Game1.mouseCursors,
                 new Rectangle(337, 494, 12, 12),
-                5f
+                4f
             );
 
-            // Scroll buttons - large and visible
+            // Scroll buttons - vanilla pattern
+            int scrollButtonX = xPositionOnScreen + width - 32;
+            int scrollButtonY = yPositionOnScreen + ContentMarginTop;
+            int scrollableHeight = height - ContentMarginTop - 32;
+            
             scrollUpButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + 140, 112, 112),
+                new Rectangle(scrollButtonX, scrollButtonY, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 459, 11, 12),
-                8f
+                4f
             );
 
             scrollDownButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + height - 140, 112, 112),
+                new Rectangle(scrollButtonX, scrollButtonY + scrollableHeight - 48, 44, 48),
                 Game1.mouseCursors,
                 new Rectangle(421, 472, 11, 12),
-                8f
+                4f
             );
+            
+            // Setup scrollbar
+            SetupScrollbar();
+        }
+        
+        private void SetupScrollbar()
+        {
+            int contentHeight = items.Count * ItemHeight;
+            int visibleHeight = height - IClickableMenu.borderWidth * 2 - 120;
+            
+            if (contentHeight > visibleHeight)
+            {
+                scrollBarTrack = new Rectangle(
+                    xPositionOnScreen + width - IClickableMenu.borderWidth - 48,
+                    yPositionOnScreen + IClickableMenu.borderWidth + 100,
+                    24,
+                    height - IClickableMenu.borderWidth * 2 - 200
+                );
+                
+                int scrollBarHeight = Math.Max(24, (int)((float)visibleHeight / contentHeight * scrollBarTrack.Height));
+                scrollBarThumb = new Rectangle(scrollBarTrack.X + 4, scrollBarTrack.Y, 16, scrollBarHeight);
+            }
         }
 
         public override void draw(SpriteBatch b)
@@ -59,11 +108,15 @@ namespace PerfectionStats
             // Draw fade background
             b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.75f);
 
-            // Draw background
-            var parchmentColor = new Color(245, 234, 200);
-            b.Draw(Game1.fadeToBlackRect, new Rectangle(xPositionOnScreen, yPositionOnScreen, width, height), parchmentColor);
-            IClickableMenu.drawTextureBox(b, Game1.mouseCursors, new Rectangle(16, 368, 16, 16),
-                xPositionOnScreen, yPositionOnScreen, width, height, Color.White, 4f, false);
+            // Draw fixed menu frame
+            Game1.drawDialogueBox(
+                xPositionOnScreen,
+                yPositionOnScreen,
+                width,
+                height,
+                false,
+                true
+            );
 
             // Draw title
             string title = categoryName;
@@ -79,10 +132,10 @@ namespace PerfectionStats
             var statusPos = new Vector2(xPositionOnScreen + (width - statusSize.X) / 2, titlePos.Y + titleSize.Y + 8);
             Utility.drawTextWithShadow(b, statusText, Game1.smallFont, statusPos, new Color(120, 78, 36));
 
-            // Draw items list
-            int yOffset = yPositionOnScreen + 120;
+            // Draw items list with scroll
+            int yOffset = yPositionOnScreen + ContentMarginTop;
             int maxVisible = ItemsPerPage;
-            int endIndex = System.Math.Min(scrollPosition + maxVisible, items.Count);
+            int endIndex = Math.Min(scrollPosition + maxVisible, items.Count);
 
             for (int i = scrollPosition; i < endIndex; i++)
             {
@@ -94,12 +147,13 @@ namespace PerfectionStats
                 string displayText = item.IsCompleted ? $"✓ {item.Name}" : $"✗ {item.Name}";
                 
                 Utility.drawTextWithShadow(b, displayText, Game1.smallFont,
-                    new Vector2(xPositionOnScreen + 40, itemY), textColor);
+                    new Vector2(xPositionOnScreen + ContentMarginLeft, itemY), textColor);
             }
 
-            // Draw scroll buttons if needed
+            // Draw scrollbar if needed
             if (items.Count > ItemsPerPage)
             {
+                DrawVanillaScrollbar(b);
                 scrollUpButton.draw(b);
                 scrollDownButton.draw(b);
             }
@@ -109,6 +163,71 @@ namespace PerfectionStats
 
             // Draw mouse
             drawMouse(b);
+        }
+        
+        private void DrawVanillaScrollbar(SpriteBatch b)
+        {
+            // Calculate scrollbar dimensions
+            int scrollbarX = xPositionOnScreen + width - 32;
+            int scrollbarTop = yPositionOnScreen + ContentMarginTop + 52;
+            int scrollableHeight = height - ContentMarginTop - 32;
+            int scrollbarBottom = scrollbarTop + scrollableHeight - 104; // Between arrows
+            int trackHeight = scrollbarBottom - scrollbarTop;
+            
+            // Store scrollbar track rectangle
+            scrollBarTrack = new Rectangle(
+                scrollbarX,
+                scrollbarTop,
+                24,
+                trackHeight
+            );
+            
+            // Calculate thumb size and position
+            int totalContentHeight = items.Count * ItemHeight;
+            int visibleHeight = ItemsPerPage * ItemHeight;
+            float contentRatio = (float)visibleHeight / totalContentHeight;
+            int thumbHeight = (int)(trackHeight * contentRatio);
+            thumbHeight = Math.Max(thumbHeight, 48);
+            
+            int maxScrollItems = Math.Max(0, items.Count - ItemsPerPage);
+            float scrollPercentage = maxScrollItems > 0 ? (float)scrollPosition / maxScrollItems : 0;
+            int thumbY = scrollbarTop + (int)((trackHeight - thumbHeight) * scrollPercentage);
+            
+            // Store thumb rectangle
+            scrollBarThumb = new Rectangle(
+                scrollbarX,
+                thumbY,
+                24,
+                thumbHeight
+            );
+            
+            // Draw scrollbar track
+            IClickableMenu.drawTextureBox(
+                b,
+                Game1.mouseCursors,
+                new Rectangle(403, 383, 6, 6),
+                scrollBarTrack.X,
+                scrollBarTrack.Y,
+                scrollBarTrack.Width,
+                scrollBarTrack.Height,
+                Color.White,
+                4f,
+                false
+            );
+            
+            // Draw scrollbar thumb
+            IClickableMenu.drawTextureBox(
+                b,
+                Game1.mouseCursors,
+                new Rectangle(435, 463, 4, 10),
+                scrollBarThumb.X + 2,
+                scrollBarThumb.Y,
+                scrollBarThumb.Width - 4,
+                scrollBarThumb.Height,
+                Color.White,
+                2f,
+                false
+            );
         }
 
         public override void receiveLeftClick(int x, int y, bool playSound = true)
@@ -122,6 +241,9 @@ namespace PerfectionStats
                 return;
             }
 
+            int maxScrollItems = Math.Max(0, items.Count - ItemsPerPage);
+
+            // Arrow button clicks
             if (scrollUpButton.containsPoint(x, y) && scrollPosition > 0)
             {
                 scrollPosition--;
@@ -129,12 +251,50 @@ namespace PerfectionStats
                 return;
             }
 
-            if (scrollDownButton.containsPoint(x, y) && scrollPosition < items.Count - ItemsPerPage)
+            if (scrollDownButton.containsPoint(x, y) && scrollPosition < maxScrollItems)
             {
                 scrollPosition++;
                 if (playSound) Game1.playSound("shwip");
                 return;
             }
+            
+            // Scrollbar thumb drag - start dragging
+            if (scrollBarThumb.Contains(x, y))
+            {
+                scrolling = true;
+                return;
+            }
+            
+            // Scrollbar track click - jump to position
+            if (scrollBarTrack.Contains(x, y))
+            {
+                float clickPercent = (float)(y - scrollBarTrack.Y) / scrollBarTrack.Height;
+                scrollPosition = (int)(clickPercent * maxScrollItems);
+                scrollPosition = Math.Max(0, Math.Min(maxScrollItems, scrollPosition));
+                if (playSound) Game1.playSound("shiny4");
+                return;
+            }
+        }
+        
+        public override void leftClickHeld(int x, int y)
+        {
+            base.leftClickHeld(x, y);
+            
+            // Handle scrollbar thumb dragging
+            if (scrolling)
+            {
+                int maxScrollItems = Math.Max(0, items.Count - ItemsPerPage);
+                
+                float dragPercent = (float)(y - scrollBarTrack.Y) / scrollBarTrack.Height;
+                scrollPosition = (int)(dragPercent * maxScrollItems);
+                scrollPosition = Math.Max(0, Math.Min(maxScrollItems, scrollPosition));
+            }
+        }
+        
+        public override void releaseLeftClick(int x, int y)
+        {
+            base.releaseLeftClick(x, y);
+            scrolling = false; // Stop dragging
         }
 
         public override void receiveScrollWheelAction(int direction)

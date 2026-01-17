@@ -14,16 +14,27 @@ namespace PerfectionStats
     internal class PerfectionStatsMenu : IClickableMenu
     {
         private ClickableTextureComponent closeButton;
-        private int scrollPosition = 0;
         private List<ProgressCategory> categories;
-        private ClickableTextureComponent scrollUpButton;
-        private ClickableTextureComponent scrollDownButton;
-        private const int CategoryHeight = 56;
+        
+        // FIXED FRAME DIMENSIONS (like OptionsMenu)
+        private const int MenuWidth = 1000;
+        private const int MenuHeight = 720;
+        
+        // LAYOUT SECTIONS (vanilla pattern)
+        private const int HeaderHeight = 100;
+        private const int FooterHeight = 140;
+        
+        // Content margins
+        private const int ContentMarginLeft = 72;
+        private const int ContentMarginRight = 64;
+        
+        // Category row constants
+        private const int CategoryHeight = 64;
         private const int CategorySpacing = 10;
-        private const int OverallSectionHeight = 90;
+        
         private bool hasSVE = false;
         private bool hasRideside = false;
-
+        
         // Progress providers - separated concerns for calculating progress
         private readonly FishProgressProvider fishProgressProvider = new FishProgressProvider();
         private readonly CookingRecipeProgressProvider cookingProgressProvider = new CookingRecipeProgressProvider();
@@ -53,37 +64,48 @@ namespace PerfectionStats
             public int GetPercentage() => Total > 0 ? (int)(GetProgress() * 100) : 0;
         }
 
-        public PerfectionStatsMenu(int x, int y, int width, int height)
-            : base(x, y, width, height, true)
+        public PerfectionStatsMenu()
+            : base(
+                (Game1.uiViewport.Width - MenuWidth) / 2,
+                (Game1.uiViewport.Height - MenuHeight) / 2,
+                MenuWidth,
+                MenuHeight,
+                true)
         {
-            // Close button - larger size matching options menu
-            closeButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 80, yPositionOnScreen + 16, 80, 80),
-                Game1.mouseCursors,
-                new Rectangle(337, 494, 12, 12),
-                5f
-            );
-
-            // Scroll arrows - large and visible
-            scrollUpButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + 140, 112, 112),
-                Game1.mouseCursors,
-                new Rectangle(421, 459, 11, 12),
-                8f // Very large scale for visibility
-            );
-
-            scrollDownButton = new ClickableTextureComponent(
-                new Rectangle(xPositionOnScreen + width - 16, yPositionOnScreen + height - OverallSectionHeight - 180, 112, 112),
-                Game1.mouseCursors,
-                new Rectangle(421, 472, 11, 12),
-                8f // Very large scale for visibility
-            );
-
             DetectInstalledMods();
             ComputeProgressData();
             InitializeCategories();
+            InitializeCloseButton();
         }
-
+        
+        private void InitializeCloseButton()
+        {
+            // Vanilla close button
+            closeButton = new ClickableTextureComponent(
+                new Rectangle(
+                    xPositionOnScreen + width - 48 - 16,
+                    yPositionOnScreen + 16,
+                    48,
+                    48
+                ),
+                Game1.mouseCursors,
+                new Rectangle(337, 494, 12, 12),
+                4f
+            );
+        }
+        
+        private void ComputeProgressData()
+        {
+            // Compute all progress data using providers - separated from UI logic
+            fishData = fishProgressProvider.GetProgress();
+            cookingData = cookingProgressProvider.GetProgress();
+            craftingData = craftingProgressProvider.GetProgress();
+            museumData = museumProgressProvider.GetProgress();
+            friendshipData = friendshipProgressProvider.GetProgress();
+            cropsData = cropsProgressProvider.GetProgress();
+            forageablesData = forageablesProgressProvider.GetProgress();
+        }
+        
         private void DetectInstalledMods()
         {
             try
@@ -99,18 +121,6 @@ namespace PerfectionStats
                 hasSVE = false;
                 hasRideside = false;
             }
-        }
-
-        private void ComputeProgressData()
-        {
-            // Compute all progress data using providers - separated from UI logic
-            fishData = fishProgressProvider.GetProgress();
-            cookingData = cookingProgressProvider.GetProgress();
-            craftingData = craftingProgressProvider.GetProgress();
-            museumData = museumProgressProvider.GetProgress();
-            friendshipData = friendshipProgressProvider.GetProgress();
-            cropsData = cropsProgressProvider.GetProgress();
-            forageablesData = forageablesProgressProvider.GetProgress();
         }
 
         private void InitializeCategories()
@@ -148,8 +158,21 @@ namespace PerfectionStats
                 categories.Add(new ProgressCategory { Name = UIStrings.RidesideItems, Completed = GetRidesideItems(), Total = config.RidesideCategories.RidesideUniqueItemsTotalCount });
                 categories.Add(new ProgressCategory { Name = UIStrings.RidesideQuests, Completed = GetRidesideQuests(), Total = config.RidesideCategories.RidesideQuestsTotalCount });
             }
-
-            UpdateButtonPositions();
+            
+            // Initialize detail buttons for all categories
+            for (int i = 0; i < categories.Count; i++)
+            {
+                categories[i].DetailsButton = new ClickableTextureComponent(
+                    new Rectangle(0, 0, 32, 32),
+                    Game1.mouseCursors,
+                    new Rectangle(80, 0, 13, 13),
+                    2.0f
+                )
+                {
+                    myID = i,
+                    name = $"details_{i}"
+                };
+            }
         }
 
         private int GetSVEFishCaught() => !hasSVE ? 0 : 5;
@@ -159,23 +182,6 @@ namespace PerfectionStats
         private int GetRidesideFriends() => !hasRideside ? 0 : 6;
         private int GetRidesideItems() => !hasRideside ? 0 : 8;
         private int GetRidesideQuests() => !hasRideside ? 0 : 5;
-
-        private void UpdateButtonPositions()
-        {
-            for (int i = 0; i < categories.Count; i++)
-            {
-                categories[i].DetailsButton = new ClickableTextureComponent(
-                    new Rectangle(0, 0, 32, 32), // Smaller magnifying glass
-                    Game1.mouseCursors,
-                    new Rectangle(80, 0, 13, 13),
-                    2.5f // Reduced scale
-                )
-                {
-                    myID = i,
-                    name = $"details_{i}"
-                };
-            }
-        }
 
         public override void receiveKeyPress(Keys key)
         {
@@ -188,39 +194,17 @@ namespace PerfectionStats
             // Draw fade background
             b.Draw(Game1.fadeToBlackRect, Game1.graphics.GraphicsDevice.Viewport.Bounds, Color.Black * 0.75f);
 
-            // Draw parchment-style background
+            // Draw fixed menu frame
             DrawParchmentBackground(b);
 
-            // Draw title
-            DrawTitle(b);
+            // HEADER SECTION (Fixed)
+            DrawHeader(b);
 
-            // Calculate available area for categories
-            int yOffset = yPositionOnScreen + 110;
-            int overallSectionY = yPositionOnScreen + height - OverallSectionHeight - 10;
-            int maxAreaHeight = overallSectionY - yOffset - 30;
-            int rowsFit = Math.Max(1, (maxAreaHeight / (CategoryHeight + CategorySpacing)));
-            int visibleCategories = Math.Min(rowsFit, categories.Count);
+            // CONTENT SECTION (Middle) - Draw only categories that fit
+            DrawContent(b);
 
-            // Draw category items
-            for (int i = scrollPosition; i < scrollPosition + visibleCategories && i < categories.Count; i++)
-            {
-                int categoryY = yOffset + ((i - scrollPosition) * (CategoryHeight + CategorySpacing));
-                DrawProgressCategory(b, categories[i], categoryY);
-            }
-
-            // Draw scroll buttons if needed
-            if (categories.Count > visibleCategories)
-            {
-                scrollUpButton.draw(b);
-                scrollDownButton.draw(b);
-            }
-
-            // Draw golden separator line
-            int separatorY = overallSectionY - 15;
-            b.Draw(Game1.staminaRect, new Rectangle(xPositionOnScreen + 40, separatorY, width - 80, 2), new Color(218, 165, 32));
-
-            // Draw Overall Perfection section
-            DrawOverallSection(b, overallSectionY);
+            // FOOTER SECTION (Fixed) - Overall perfection bar
+            DrawFooter(b);
 
             // Draw close button
             closeButton.draw(b);
@@ -228,7 +212,76 @@ namespace PerfectionStats
             // Draw mouse
             drawMouse(b);
         }
+        
+        private void DrawHeader(SpriteBatch b)
+        {
+            // Draw title
+            string title = UIStrings.MenuTitle;
+            string subtitle = hasSVE && hasRideside ? UIStrings.SubtitleSVEAndRideside : 
+                              hasSVE ? UIStrings.SubtitleSVE : 
+                              hasRideside ? UIStrings.SubtitleRideside : 
+                              string.Empty;
 
+            Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
+            var titlePos = new Vector2(
+                xPositionOnScreen + (width - titleSize.X) / 2, 
+                yPositionOnScreen + 32
+            );
+            Utility.drawTextWithShadow(b, title, Game1.dialogueFont, titlePos, new Color(92, 62, 28));
+
+            if (!string.IsNullOrEmpty(subtitle))
+            {
+                Vector2 subSize = Game1.smallFont.MeasureString(subtitle);
+                var subPos = new Vector2(
+                    xPositionOnScreen + (width - subSize.X) / 2, 
+                    titlePos.Y + titleSize.Y + 4
+                );
+                Utility.drawTextWithShadow(b, subtitle, Game1.smallFont, subPos, new Color(120, 78, 36));
+            }
+            
+            // Gold divider line below header
+            int dividerY = yPositionOnScreen + HeaderHeight - 4;
+            b.Draw(Game1.staminaRect, 
+                new Rectangle(xPositionOnScreen + 40, dividerY, width - 80, 2), 
+                new Color(218, 165, 32));
+        }
+        
+        private void DrawContent(SpriteBatch b)
+        {
+            // Content area boundaries
+            int contentX = xPositionOnScreen + ContentMarginLeft;
+            int contentY = yPositionOnScreen + HeaderHeight;
+            int contentWidth = width - ContentMarginLeft - ContentMarginRight;
+            int contentHeight = height - HeaderHeight - FooterHeight;
+            
+            // Calculate how many categories fit (NO SCROLLING)
+            int categoriesThatFit = (contentHeight - 20) / (CategoryHeight + CategorySpacing);
+            int categoriesToDraw = Math.Min(categoriesThatFit, categories.Count);
+            
+            // Draw categories that fit
+            for (int i = 0; i < categoriesToDraw; i++)
+            {
+                int categoryY = contentY + 10 + (i * (CategoryHeight + CategorySpacing));
+                DrawProgressCategory(b, categories[i], categoryY, contentX, contentWidth);
+            }
+        }
+        
+        private void DrawFooter(SpriteBatch b)
+        {
+            // Footer area for overall perfection bar
+            int footerY = yPositionOnScreen + height - FooterHeight;
+            int contentX = xPositionOnScreen + ContentMarginLeft;
+            int contentWidth = width - ContentMarginLeft - ContentMarginRight;
+            
+            // Gold divider line above footer
+            b.Draw(Game1.staminaRect, 
+                new Rectangle(xPositionOnScreen + 40, footerY, width - 80, 2), 
+                new Color(218, 165, 32));
+            
+            // Draw overall perfection section
+            DrawOverallSection(b, footerY + 10, contentX, contentWidth);
+        }
+        
         private void DrawParchmentBackground(SpriteBatch b)
         {
             var parchmentColor = new Color(245, 234, 200);
@@ -238,79 +291,49 @@ namespace PerfectionStats
                 xPositionOnScreen, yPositionOnScreen, width, height, Color.White, 4f, false);
         }
 
-        private void DrawTitle(SpriteBatch b)
+        private void DrawProgressCategory(SpriteBatch b, ProgressCategory category, int yPos, int contentX, int contentWidth)
         {
-            string title = UIStrings.MenuTitle;
-            string subtitle = hasSVE && hasRideside ? UIStrings.SubtitleSVEAndRideside : 
-                              hasSVE ? UIStrings.SubtitleSVE : 
-                              hasRideside ? UIStrings.SubtitleRideside : 
-                              string.Empty;
-
-            Vector2 titleSize = Game1.dialogueFont.MeasureString(title);
-            var titlePos = new Vector2(xPositionOnScreen + (width - titleSize.X) / 2, yPositionOnScreen + 24);
-            Utility.drawTextWithShadow(b, title, Game1.dialogueFont, titlePos, new Color(92, 62, 28));
-
-            if (!string.IsNullOrEmpty(subtitle))
-            {
-                Vector2 subSize = Game1.smallFont.MeasureString(subtitle);
-                var subPos = new Vector2(xPositionOnScreen + (width - subSize.X) / 2, titlePos.Y + titleSize.Y + 4);
-                Utility.drawTextWithShadow(b, subtitle, Game1.smallFont, subPos, new Color(120, 78, 36));
-            }
-        }
-
-        private void DrawProgressCategory(SpriteBatch b, ProgressCategory category, int yPos)
-        {
-            int contentX = xPositionOnScreen + 32;
-            int rightPadding = 70;
-            int categoryWidth = width - (contentX - xPositionOnScreen) - rightPadding;
-
+            // Increased space for row to prevent overlap
+            // Reserve space for: numbers (80px) + magnifying glass (48px) + gap (20px) = 148px
+            int reservedRightSpace = 148;
+            
             // Draw category name
             Utility.drawTextWithShadow(b, category.Name, Game1.smallFont,
                 new Vector2(contentX, yPos), new Color(92, 62, 28));
 
-            // Draw progress bar (rectangular simple style)
-            int barY = yPos + 26;
+            // Progress bar
+            int barY = yPos + 30;
             int barHeight = 24;
-            int barWidth = categoryWidth - 80;
+            int barWidth = contentWidth - reservedRightSpace;
 
-            // Bar background (dark gray)
+            // Bar background
             b.Draw(Game1.staminaRect, 
                 new Rectangle(contentX, barY, barWidth, barHeight), 
                 new Color(60, 60, 60));
 
-            // Bar border (darker)
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(contentX, barY, barWidth, 2), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(contentX, barY + barHeight - 2, barWidth, 2), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(contentX, barY, 2, barHeight), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(contentX + barWidth - 2, barY, 2, barHeight), 
-                new Color(30, 30, 30));
+            // Bar border
+            b.Draw(Game1.staminaRect, new Rectangle(contentX, barY, barWidth, 2), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(contentX, barY + barHeight - 2, barWidth, 2), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(contentX, barY, 2, barHeight), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(contentX + barWidth - 2, barY, 2, barHeight), new Color(30, 30, 30));
 
-            // Bar fill (stardrop purple color)
+            // Bar fill
             float progress = category.GetProgress();
             int fillWidth = (int)(barWidth * progress);
             
             if (fillWidth > 4)
             {
-                // Stardrop color (#B700FF)
-                Color stardropColor = new Color(183, 0, 255);
+                Color stardropColor = new Color(205, 92, 255);
                 b.Draw(Game1.staminaRect, 
                     new Rectangle(contentX + 2, barY + 2, fillWidth - 4, barHeight - 4), 
                     stardropColor);
                 
-                // Shine at top
                 b.Draw(Game1.staminaRect, 
                     new Rectangle(contentX + 2, barY + 2, fillWidth - 4, 4), 
                     Color.White * 0.3f);
             }
 
-            // Draw percentage inside bar
+            // Percentage inside bar
             string percentText = $"{category.GetPercentage()}%";
             Vector2 percentSize = Game1.smallFont.MeasureString(percentText);
             Vector2 percentPos = new Vector2(
@@ -319,15 +342,18 @@ namespace PerfectionStats
             );
             Utility.drawTextWithShadow(b, percentText, Game1.smallFont, percentPos, Color.White);
 
-            // Draw fraction text
+            // Numbers - fixed position with proper spacing
             string fractionText = $"{category.Completed}/{category.Total}";
             Vector2 fractionSize = Game1.smallFont.MeasureString(fractionText);
-            Vector2 fractionPos = new Vector2(contentX + barWidth + 8, barY + (barHeight - fractionSize.Y) / 2);
+            Vector2 fractionPos = new Vector2(
+                contentX + barWidth + 12, 
+                barY + (barHeight - fractionSize.Y) / 2
+            );
             Utility.drawTextWithShadow(b, fractionText, Game1.smallFont, fractionPos, new Color(92, 62, 28));
 
-            // Draw magnifying glass button
-            int buttonX = xPositionOnScreen + width - 50;
-            int buttonY = yPos + 12;
+            // Magnifying glass button - fixed position, won't overlap
+            int buttonX = contentX + contentWidth - 40;
+            int buttonY = barY - 2;
             
             category.DetailsButton.bounds = new Rectangle(buttonX, buttonY, 32, 32);
             
@@ -337,43 +363,36 @@ namespace PerfectionStats
                 Color.White * (category.DetailsButton.scale > 1f ? 1f : 0.7f),
                 0f,
                 Vector2.Zero,
-                2.5f,
+                2.0f,
                 SpriteEffects.None,
                 0.9f);
         }
 
-        private void DrawOverallSection(SpriteBatch b, int y)
+        private void DrawOverallSection(SpriteBatch b, int y, int contentX, int contentWidth)
         {
             string label = UIStrings.OverallPerfectionLabel;
             
-            Vector2 ls = Game1.smallFont.MeasureString(label);
+            // Center label in content area
+            Vector2 ls = Game1.smallFont.MeasureString(label) * 1.2f;
             Utility.drawTextWithShadow(b, label, Game1.smallFont,
-                new Vector2(xPositionOnScreen + (width - ls.X) / 2, y), new Color(92, 62, 28));
+                new Vector2(contentX + (contentWidth - ls.X) / 2, y + 12), new Color(92, 62, 28), 1.2f);
 
-            // Overall bar (rectangular simple style)
-            int barWidth = width - 140;
-            int barX = xPositionOnScreen + (width - barWidth) / 2;
-            int barY = y + 30;
-            int barH = 24;
+            // Overall bar
+            int barWidth = contentWidth - 100;
+            int barX = contentX + (contentWidth - barWidth) / 2;
+            int barY = y + 48;
+            int barH = 28;
 
-            // Bar background (dark gray)
+            // Bar background
             b.Draw(Game1.staminaRect, 
                 new Rectangle(barX, barY, barWidth, barH), 
                 new Color(60, 60, 60));
 
             // Bar border
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(barX, barY, barWidth, 2), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(barX, barY + barH - 2, barWidth, 2), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(barX, barY, 2, barH), 
-                new Color(30, 30, 30));
-            b.Draw(Game1.staminaRect, 
-                new Rectangle(barX + barWidth - 2, barY, 2, barH), 
-                new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(barX, barY, barWidth, 2), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(barX, barY + barH - 2, barWidth, 2), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(barX, barY, 2, barH), new Color(30, 30, 30));
+            b.Draw(Game1.staminaRect, new Rectangle(barX + barWidth - 2, barY, 2, barH), new Color(30, 30, 30));
 
             // Bar fill
             int overallPercent = CalculateOverallPercent();
@@ -381,21 +400,21 @@ namespace PerfectionStats
             
             if (fillW > 4)
             {
-                Color stardropColor = new Color(183, 0, 255);
+                Color stardropColor = new Color(205, 92, 255);
                 b.Draw(Game1.staminaRect, 
                     new Rectangle(barX + 2, barY + 2, fillW - 4, barH - 4), 
                     stardropColor);
                 
                 b.Draw(Game1.staminaRect, 
-                    new Rectangle(barX + 2, barY + 2, fillW - 4, 4), 
+                    new Rectangle(barX + 2, barY + 2, fillW - 4, 6), 
                     Color.White * 0.3f);
             }
 
             // Percentage below bar
             string pct = $"{overallPercent}%";
-            Vector2 ps = Game1.smallFont.MeasureString(pct);
+            Vector2 ps = Game1.smallFont.MeasureString(pct) * 1.1f;
             Utility.drawTextWithShadow(b, pct, Game1.smallFont,
-                new Vector2(barX + (barWidth - ps.X) / 2, barY + barH + 4), new Color(92, 62, 28));
+                new Vector2(barX + (barWidth - ps.X) / 2, barY + barH + 12), new Color(92, 62, 28), 1.1f);
         }
 
         private int CalculateOverallPercent()
@@ -426,8 +445,6 @@ namespace PerfectionStats
         {
             base.performHoverAction(x, y);
             closeButton.scale = closeButton.containsPoint(x, y) ? 1.1f : 1f;
-            scrollUpButton.scale = scrollUpButton.containsPoint(x, y) ? 1.1f : 1f;
-            scrollDownButton.scale = scrollDownButton.containsPoint(x, y) ? 1.1f : 1f;
 
             foreach (var category in categories)
             {
@@ -435,7 +452,7 @@ namespace PerfectionStats
                     category.DetailsButton.scale = category.DetailsButton.containsPoint(x, y) ? 1.3f : 1f;
             }
         }
-
+        
         public override void receiveLeftClick(int x, int y, bool playSound = true)
         {
             base.receiveLeftClick(x, y, playSound);
@@ -447,43 +464,32 @@ namespace PerfectionStats
                 return;
             }
 
-            if (scrollUpButton.containsPoint(x, y) && scrollPosition > 0)
+            // Check details button clicks on visible categories
+            int contentY = yPositionOnScreen + HeaderHeight;
+            int contentHeight = height - HeaderHeight - FooterHeight;
+            int categoriesThatFit = (contentHeight - 20) / (CategoryHeight + CategorySpacing);
+            int categoriesToCheck = Math.Min(categoriesThatFit, categories.Count);
+            
+            for (int i = 0; i < categoriesToCheck; i++)
             {
-                scrollPosition--;
-                if (playSound) Game1.playSound("shwip");
-                return;
-            }
-
-            if (scrollDownButton.containsPoint(x, y))
-            {
-                int yOffset = yPositionOnScreen + 110;
-                int overallSectionY = yPositionOnScreen + height - OverallSectionHeight - 10;
-                int maxAreaHeight = overallSectionY - yOffset - 30;
-                int rowsFit = Math.Max(1, (maxAreaHeight / (CategoryHeight + CategorySpacing)));
+                var category = categories[i];
                 
-                if (scrollPosition < categories.Count - rowsFit)
-                {
-                    scrollPosition++;
-                    if (playSound) Game1.playSound("shwip");
-                }
-                return;
-            }
-
-            // Check details button clicks
-            foreach (var category in categories)
-            {
                 if (category.DetailsButton != null && category.DetailsButton.containsPoint(x, y))
                 {
                     if (playSound) Game1.playSound("smallSelect");
                     ModEntry.Instance.Monitor.Log($"Details clicked for: {category.Name}", LogLevel.Debug);
-                    
-                    // Open details window
                     OpenCategoryDetails(category.Name);
                     return;
                 }
             }
         }
-
+        
+        public override void receiveScrollWheelAction(int direction)
+        {
+            // No scrolling
+            base.receiveScrollWheelAction(direction);
+        }
+        
         private void OpenCategoryDetails(string categoryName)
         {
             List<CategoryDetailsMenu.DetailItem> items = new List<CategoryDetailsMenu.DetailItem>();

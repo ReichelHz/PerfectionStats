@@ -154,13 +154,8 @@ namespace PerfectionStats
                         Monitor.Log("Perfection Stats button clicked!", LogLevel.Info);
                         Helper.Input.Suppress(e.Button);
                         
-                        // Open custom menu
-                        Game1.activeClickableMenu = new PerfectionStatsMenu(
-                            Game1.uiViewport.Width / 2 - 400,
-                            Game1.uiViewport.Height / 2 - 300,
-                            800,
-                            600
-                        );
+                        // Open custom menu - now uses vanilla container pattern
+                        Game1.activeClickableMenu = new PerfectionStatsMenu();
                     }
                 }
             }
