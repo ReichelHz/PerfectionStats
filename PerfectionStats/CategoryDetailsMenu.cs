@@ -21,11 +21,12 @@ namespace PerfectionStats
         
         // Fixed frame dimensions
         private const int FixedMenuWidth = 800;
-        private const int FixedMenuHeight = 600;
+        private const int FixedMenuHeight = 620;  // Increased from 600 to ensure bottom border is visible
         
         // Content margins
         private const int ContentMarginLeft = 64;
-        private const int ContentMarginTop = 120; // After title and status
+        private const int ContentMarginTop = 120;
+        private const int ContentMarginBottom = 20; // Add bottom padding for frame border
         
         // Vanilla scrollbar
         private Rectangle scrollBarTrack;

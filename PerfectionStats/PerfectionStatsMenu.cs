@@ -16,13 +16,13 @@ namespace PerfectionStats
         private ClickableTextureComponent closeButton;
         private List<ProgressCategory> categories;
         
-        // FIXED FRAME DIMENSIONS (like OptionsMenu)
+        // FIXED FRAME DIMENSIONS (matching DetailsMenu pattern)
         private const int MenuWidth = 1000;
-        private const int MenuHeight = 720;
+        private const int MenuHeight = 640;  // Increased from 620 to account for footer content + bottom border
         
-        // LAYOUT SECTIONS (vanilla pattern)
+        // LAYOUT SECTIONS
         private const int HeaderHeight = 100;
-        private const int FooterHeight = 140;
+        private const int FooterHeight = 160;  // Increased from 150 to ensure full footer + bottom border visibility
         
         // Content margins
         private const int ContentMarginLeft = 72;
@@ -66,8 +66,8 @@ namespace PerfectionStats
 
         public PerfectionStatsMenu()
             : base(
-                (Game1.uiViewport.Width - MenuWidth) / 2,
-                (Game1.uiViewport.Height - MenuHeight) / 2,
+                Game1.uiViewport.Width / 2 - MenuWidth / 2,   // Center X (DetailsMenu pattern)
+                Game1.uiViewport.Height / 2 - MenuHeight / 2, // Center Y (DetailsMenu pattern)
                 MenuWidth,
                 MenuHeight,
                 true)
