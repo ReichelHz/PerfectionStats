@@ -203,23 +203,39 @@ namespace PerfectionStats
                 Game1.player.fishCaught?.Keys.Select(k => int.Parse(k)) ?? Enumerable.Empty<int>()
             );
             
-            // Definitive list of all vanilla catchable fish
-            var allFish = new Dictionary<int, string>
+            var allFish = new Dictionary<int, string>();
+            
+            try
             {
-                {128, "Pufferfish"}, {129, "Anchovy"}, {130, "Tuna"}, {131, "Sardine"}, {132, "Bream"},
-                {136, "Largemouth Bass"}, {137, "Smallmouth Bass"}, {138, "Rainbow Trout"}, {139, "Salmon"},
-                {140, "Walleye"}, {141, "Perch"}, {142, "Carp"}, {143, "Catfish"}, {144, "Pike"},
-                {145, "Sunfish"}, {146, "Red Mullet"}, {147, "Herring"}, {148, "Eel"}, {149, "Octopus"},
-                {150, "Red Snapper"}, {151, "Squid"}, {154, "Sea Cucumber"}, {155, "Super Cucumber"},
-                {156, "Ghostfish"}, {158, "Stonefish"}, {159, "Crimsonfish"}, {160, "Angler"},
-                {161, "Ice Pip"}, {162, "Lava Eel"}, {163, "Legend"}, {164, "Sandfish"}, {165, "Scorpion Carp"},
-                {682, "Mutant Carp"}, {698, "Sturgeon"}, {699, "Tiger Trout"}, {700, "Bullhead"},
-                {701, "Tilapia"}, {702, "Chub"}, {704, "Dorado"}, {705, "Albacore"}, {706, "Shad"},
-                {707, "Lingcod"}, {708, "Halibut"}, {715, "Lobster"}, {716, "Crayfish"}, {717, "Crab"},
-                {718, "Cockle"}, {719, "Mussel"}, {720, "Shrimp"}, {721, "Snail"}, {722, "Periwinkle"},
-                {723, "Oyster"}, {734, "Woodskip"}, {775, "Glacierfish"}, {795, "Void Salmon"},
-                {796, "Slimejack"}, {798, "Midnight Squid"}, {799, "Spook Fish"}, {800, "Blobfish"}
-            };
+                // Dynamically discover all fish from game data
+                // This automatically includes fish from content mods
+                for (int itemId = 0; itemId < 2000; itemId++)
+                {
+                    try
+                    {
+                        // Create a temporary object to check its properties
+                        var obj = new StardewValley.Object(itemId.ToString(), 1, false, -1, 0);
+                        
+                        // Check if this is a fish using the Type property
+                        // This works for vanilla and modded fish
+                        if (obj.Type != null && obj.Type.Equals("Fish"))
+                        {
+                            allFish[itemId] = obj.DisplayName;
+                        }
+                    }
+                    catch
+                    {
+                        // Skip invalid item IDs
+                        continue;
+                    }
+                }
+                
+                ModEntry.Instance.Monitor.Log($"Found {allFish.Count} catchable fish (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading fish data: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
 
             // Calculate caught count
             int caughtCount = allFish.Keys.Count(fishId => caughtFishIds.Contains(fishId));
@@ -233,6 +249,8 @@ namespace PerfectionStats
                     IsCompleted = caughtFishIds.Contains(fish.Key)
                 })
                 .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Fish stats: {caughtCount}/{allFish.Count} fish caught", LogLevel.Debug);
 
             return new FishData
             {
@@ -249,12 +267,69 @@ namespace PerfectionStats
                 Game1.player.cookingRecipes?.Keys ?? Enumerable.Empty<string>()
             );
             
-            // Get all available cooking recipes from game data
-            var allRecipes = CraftingRecipe.cookingRecipes;
+            var allRecipes = new Dictionary<string, string>();
             
-            if (allRecipes == null || allRecipes.Count == 0)
+            try
             {
-                // Fallback if data not loaded
+                // Dynamically load all cooking recipes from game data
+                // This includes recipes added by content mods
+                var recipeData = CraftingRecipe.cookingRecipes;
+                
+                if (recipeData != null && recipeData.Count > 0)
+                {
+                    // Add all recipes to our dictionary
+                    foreach (var recipeName in recipeData.Keys)
+                    {
+                        // Use recipe name as both key and display name
+                        // The game handles localization through the CraftingRecipe class
+                        allRecipes[recipeName] = recipeName;
+                    }
+                }
+                
+                // If the static dictionary is empty, try creating CraftingRecipe objects
+                // to ensure we capture all recipes including those added dynamically
+                if (allRecipes.Count == 0)
+                {
+                    ModEntry.Instance.Monitor.Log("cookingRecipes dictionary is empty, using fallback detection", LogLevel.Debug);
+                    
+                    // Try to detect recipes by checking if they can be instantiated
+                    // This is a fallback for edge cases where the dictionary isn't populated
+                    var knownRecipes = new List<string>
+                    {
+                        "Fried Egg", "Omelet", "Pancakes", "Bread", "Tortilla", "Pizza",
+                        "Maki Roll", "Salmon Dinner", "Fish Taco", "Fried Calamari",
+                        // Add more as fallback, but this shouldn't normally be needed
+                    };
+                    
+                    foreach (var recipeName in knownRecipes)
+                    {
+                        try
+                        {
+                            var recipe = new CraftingRecipe(recipeName, true);
+                            if (recipe != null)
+                            {
+                                allRecipes[recipeName] = recipe.DisplayName;
+                            }
+                        }
+                        catch
+                        {
+                            // Recipe doesn't exist, skip it
+                            continue;
+                        }
+                    }
+                }
+                
+                ModEntry.Instance.Monitor.Log($"Found {allRecipes.Count} cooking recipes (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading cooking recipes: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If we still couldn't load any recipes, return empty data
+            if (allRecipes.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No cooking recipes found - returning empty data", LogLevel.Warn);
                 return new CookingRecipeData
                 {
                     TotalCount = 0,
@@ -266,15 +341,17 @@ namespace PerfectionStats
             // Calculate cooked count
             int cookedCount = allRecipes.Keys.Count(recipeName => cookedRecipes.Contains(recipeName));
 
-            // Build detail items list
-            var detailItems = allRecipes.Keys
-                .OrderBy(recipeName => recipeName)
-                .Select(recipeName => new CategoryDetailsMenu.DetailItem
+            // Build detail items list using display names
+            var detailItems = allRecipes
+                .OrderBy(r => r.Value)
+                .Select(recipe => new CategoryDetailsMenu.DetailItem
                 {
-                    Name = recipeName,
-                    IsCompleted = cookedRecipes.Contains(recipeName)
+                    Name = recipe.Value,
+                    IsCompleted = cookedRecipes.Contains(recipe.Key)
                 })
                 .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Cooking stats: {cookedCount}/{allRecipes.Count} recipes cooked", LogLevel.Debug);
 
             return new CookingRecipeData
             {
@@ -291,12 +368,53 @@ namespace PerfectionStats
                 Game1.player.craftingRecipes?.Keys ?? Enumerable.Empty<string>()
             );
             
-            // Get all available crafting recipes from game data
-            var allRecipes = CraftingRecipe.craftingRecipes;
+            var allRecipes = new Dictionary<string, string>();
             
-            if (allRecipes == null || allRecipes.Count == 0)
+            try
             {
-                // Fallback if data not loaded
+                // Dynamically load all crafting recipes from game data
+                // This includes recipes added by content mods
+                var recipeData = CraftingRecipe.craftingRecipes;
+                
+                if (recipeData != null && recipeData.Count > 0)
+                {
+                    // Create CraftingRecipe objects to get proper display names
+                    // This ensures modded recipes show their correct localized names
+                    foreach (var recipeName in recipeData.Keys)
+                    {
+                        try
+                        {
+                            var recipe = new CraftingRecipe(recipeName, false);
+                            if (recipe != null && !string.IsNullOrEmpty(recipe.DisplayName))
+                            {
+                                // Use internal name as key, display name as value
+                                allRecipes[recipeName] = recipe.DisplayName;
+                            }
+                            else
+                            {
+                                // Fallback to internal name if display name is unavailable
+                                allRecipes[recipeName] = recipeName;
+                            }
+                        }
+                        catch
+                        {
+                            // If recipe instantiation fails, use internal name
+                            allRecipes[recipeName] = recipeName;
+                        }
+                    }
+                }
+                
+                ModEntry.Instance.Monitor.Log($"Found {allRecipes.Count} crafting recipes (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading crafting recipes: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If we couldn't load any recipes, return empty data
+            if (allRecipes.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No crafting recipes found - returning empty data", LogLevel.Warn);
                 return new CraftingRecipeData
                 {
                     TotalCount = 0,
@@ -305,18 +423,20 @@ namespace PerfectionStats
                 };
             }
 
-            // Calculate crafted count
+            // Calculate crafted count - compare against player's crafted recipes
             int craftedCount = allRecipes.Keys.Count(recipeName => craftedRecipes.Contains(recipeName));
 
-            // Build detail items list
-            var detailItems = allRecipes.Keys
-                .OrderBy(recipeName => recipeName)
-                .Select(recipeName => new CategoryDetailsMenu.DetailItem
+            // Build detail items list using display names
+            var detailItems = allRecipes
+                .OrderBy(r => r.Value)
+                .Select(recipe => new CategoryDetailsMenu.DetailItem
                 {
-                    Name = recipeName,
-                    IsCompleted = craftedRecipes.Contains(recipeName)
+                    Name = recipe.Value,
+                    IsCompleted = craftedRecipes.Contains(recipe.Key)
                 })
                 .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Crafting stats: {craftedCount}/{allRecipes.Count} recipes crafted", LogLevel.Debug);
 
             return new CraftingRecipeData
             {
@@ -357,21 +477,24 @@ namespace PerfectionStats
                     ModEntry.Instance.Monitor.Log("Museum location not found or has no pieces collection", LogLevel.Debug);
                 }
                 
-                // Iterate through all possible item IDs to find artifacts and minerals
-                // Vanilla Stardew Valley uses IDs 0-1000 for most items
-                for (int itemId = 0; itemId < 1000; itemId++)
+                // Dynamically discover all museum items from game data
+                // This automatically includes items from content mods
+                for (int itemId = 0; itemId < 2000; itemId++)
                 {
                     try
                     {
-                        // Create a temporary object using the correct constructor
-                        // Object(string itemId, int initialStack, bool isRecipe, int price, int quality)
+                        // Create a temporary object to check its properties
                         var obj = new StardewValley.Object(itemId.ToString(), 1, false, -1, 0);
                         
-                        // Check if this is an artifact or mineral
-                        // Use the Type property which returns the type string
+                        // Check if this is an artifact or mineral using the Type property
+                        // This works for vanilla and modded museum items
                         if (obj.Type != null && (obj.Type.Equals("Arch") || obj.Type.Equals("Minerals")))
                         {
-                            allMuseumItems[itemId] = obj.DisplayName;
+                            // Verify it has a valid display name
+                            if (!string.IsNullOrEmpty(obj.DisplayName))
+                            {
+                                allMuseumItems[itemId] = obj.DisplayName;
+                            }
                         }
                     }
                     catch
@@ -381,7 +504,7 @@ namespace PerfectionStats
                     }
                 }
                 
-                ModEntry.Instance.Monitor.Log($"Found {allMuseumItems.Count} donatable museum items", LogLevel.Debug);
+                ModEntry.Instance.Monitor.Log($"Found {allMuseumItems.Count} donatable museum items (vanilla + mods)", LogLevel.Debug);
             }
             catch (Exception ex)
             {
@@ -427,36 +550,91 @@ namespace PerfectionStats
         private FriendshipData GetFriendshipData()
         {
             var playerFriendships = Game1.player.friendshipData;
+            var allNPCs = new Dictionary<string, string>();
             
-            // Definitive list of all vanilla befriendable NPCs
-            var allNPCs = new List<string>
+            try
             {
-                "Abigail", "Alex", "Caroline", "Clint", "Demetrius", "Dwarf", "Elliott",
-                "Emily", "Evelyn", "George", "Gus", "Haley", "Harvey", "Jas", "Jodi",
-                "Kent", "Krobus", "Leah", "Lewis", "Linus", "Marnie", "Maru", "Pam",
-                "Penny", "Pierre", "Robin", "Sam", "Sandy", "Sebastian", "Shane", "Vincent",
-                "Willy", "Wizard"
-            };
+                // Dynamically discover all befriendable NPCs from game data
+                // This includes NPCs added by content mods
+                
+                // Iterate through all locations to find NPCs
+                foreach (var location in Game1.locations)
+                {
+                    if (location?.characters == null) continue;
+                    
+                    foreach (var character in location.characters)
+                    {
+                        if (character != null && !string.IsNullOrEmpty(character.Name))
+                        {
+                            // Check if this NPC can be befriended using CanSocialize
+                            // This property filters out non-befriendable characters
+                            if (character.CanSocialize && !allNPCs.ContainsKey(character.Name))
+                            {
+                                // Use display name for proper localization and mod support
+                                allNPCs[character.Name] = character.displayName ?? character.Name;
+                            }
+                        }
+                    }
+                }
+                
+                // Also check for NPCs in the player's friendship data
+                // This catches NPCs that might not be on a location currently
+                if (playerFriendships != null)
+                {
+                    foreach (var friendshipKey in playerFriendships.Keys)
+                    {
+                        if (!allNPCs.ContainsKey(friendshipKey))
+                        {
+                            // Try to get the NPC to verify they're befriendable
+                            var npc = Game1.getCharacterFromName(friendshipKey);
+                            if (npc != null && npc.CanSocialize)
+                            {
+                                allNPCs[friendshipKey] = npc.displayName ?? friendshipKey;
+                            }
+                        }
+                    }
+                }
+                
+                ModEntry.Instance.Monitor.Log($"Found {allNPCs.Count} befriendable NPCs (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading NPC data: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If no NPCs found, return empty data
+            if (allNPCs.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No befriendable NPCs found - returning empty data", LogLevel.Warn);
+                return new FriendshipData
+                {
+                    TotalCount = 0,
+                    BestFriendsCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
 
             // Calculate best friends count (8+ hearts = 2000+ points)
             int bestFriendsCount = 0;
-            foreach (var npc in allNPCs)
+            foreach (var npcName in allNPCs.Keys)
             {
-                if (playerFriendships.ContainsKey(npc) && playerFriendships[npc].Points >= 2000)
+                if (playerFriendships.ContainsKey(npcName) && playerFriendships[npcName].Points >= 2000)
                 {
                     bestFriendsCount++;
                 }
             }
 
-            // Build detail items list
+            // Build detail items list using display names
             var detailItems = allNPCs
-                .OrderBy(npc => npc)
+                .OrderBy(npc => npc.Value)
                 .Select(npc => new CategoryDetailsMenu.DetailItem
                 {
-                    Name = npc,
-                    IsCompleted = playerFriendships.ContainsKey(npc) && playerFriendships[npc].Points >= 2000
+                    Name = npc.Value,
+                    IsCompleted = playerFriendships.ContainsKey(npc.Key) && playerFriendships[npc.Key].Points >= 2000
                 })
                 .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Friendship stats: {bestFriendsCount}/{allNPCs.Count} NPCs at 8+ hearts", LogLevel.Debug);
 
             return new FriendshipData
             {
@@ -470,28 +648,62 @@ namespace PerfectionStats
         private CropsData GetCropsData()
         {
             var shippedItems = Game1.player.basicShipped;
+            var allCrops = new Dictionary<int, string>();
             
-            // Definitive list of all vanilla crops tracked for perfection
-            var allCrops = new Dictionary<int, string>
+            try
             {
-                // Spring Crops
-                {24, "Parsnip"}, {192, "Potato"}, {190, "Cauliflower"}, {188, "Green Bean"},
-                {250, "Kale"}, {252, "Rhubarb"}, {273, "Rice"}, {256, "Tomato"},
-                {248, "Garlic"}, {400, "Strawberry"}, {433, "Coffee Bean"},
+                // Dynamically discover all crops from game data
+                // This automatically includes crops from content mods
+                for (int itemId = 0; itemId < 2000; itemId++)
+                {
+                    try
+                    {
+                        // Create a temporary object to check its properties
+                        var obj = new StardewValley.Object(itemId.ToString(), 1, false, -1, 0);
+                        
+                        // Check if this is a crop using the Category property
+                        // Crops typically have categories: -75 (Vegetable), -79 (Fruit), -80 (Flower)
+                        // Also check for other crop-related categories
+                        if (obj.Category != null)
+                        {
+                            int category = obj.Category;
+                            
+                            // Include vegetables, fruits, and flowers (the main crop categories)
+                            if (category == -75 || category == -79 || category == -80)
+                            {
+                                // Verify it can actually be shipped (has a price and isn't a special item)
+                                if (obj.Price > 0 && !string.IsNullOrEmpty(obj.DisplayName))
+                                {
+                                    allCrops[itemId] = obj.DisplayName;
+                                }
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Skip invalid item IDs
+                        continue;
+                    }
+                }
                 
-                // Summer Crops
-                {254, "Melon"}, {260, "Hot Pepper"}, {262, "Wheat"}, {264, "Radish"},
-                {266, "Red Cabbage"}, {268, "Starfruit"}, {270, "Corn"}, {272, "Eggplant"},
-                {274, "Artichoke"}, {276, "Pumpkin"}, {278, "Bok Choy"}, {280, "Yam"},
-                {304, "Hops"}, {398, "Grape"}, {376, "Poppy"}, {591, "Tulip"},
-                
-                // Fall Crops
-                {284, "Beet"}, {300, "Amaranth"}, {282, "Cranberries"}, {595, "Fairy Rose"},
-                {593, "Summer Spangle"}, {597, "Blue Jazz"}, {421, "Sunflower"},
-                
-                // Special
-                {454, "Ancient Fruit"}, {427, "Tulip Bulb"}, {830, "Taro Root"}
-            };
+                ModEntry.Instance.Monitor.Log($"Found {allCrops.Count} growable crops (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading crops data: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If no crops found, return empty data
+            if (allCrops.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No crops found - returning empty data", LogLevel.Warn);
+                return new CropsData
+                {
+                    TotalCount = 0,
+                    GrownCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
 
             // Calculate grown count (items that have been shipped at least once)
             int grownCount = allCrops.Keys.Count(cropId => 
@@ -507,6 +719,8 @@ namespace PerfectionStats
                 })
                 .ToList();
 
+            ModEntry.Instance.Monitor.Log($"Crops stats: {grownCount}/{allCrops.Count} crops grown", LogLevel.Debug);
+
             return new CropsData
             {
                 TotalCount = allCrops.Count,
@@ -519,28 +733,55 @@ namespace PerfectionStats
         private ForageablesData GetForageablesData()
         {
             var shippedItems = Game1.player.basicShipped;
+            var allForageables = new Dictionary<int, string>();
             
-            // Definitive list of all vanilla forageables tracked for perfection
-            var allForageables = new Dictionary<int, string>
+            try
             {
-                // Spring Forageables
-                {16, "Wild Horseradish"}, {18, "Daffodil"}, {20, "Leek"}, {22, "Dandelion"},
+                // Dynamically discover all forageables from game data
+                // This automatically includes forageables from content mods
+                for (int itemId = 0; itemId < 2000; itemId++)
+                {
+                    try
+                    {
+                        // Create a temporary object to check its properties
+                        var obj = new StardewValley.Object(itemId.ToString(), 1, false, -1, 0);
+                        
+                        // Check if this is a forageable using the Category property
+                        // Forageables have category -81 (Forage)
+                        if (obj.Category == -81)
+                        {
+                            // Verify it can actually be shipped (has a price and isn't a special item)
+                            if (obj.Price > 0 && !string.IsNullOrEmpty(obj.DisplayName))
+                            {
+                                allForageables[itemId] = obj.DisplayName;
+                            }
+                        }
+                    }
+                    catch
+                    {
+                        // Skip invalid item IDs
+                        continue;
+                    }
+                }
                 
-                // Summer Forageables
-                {396, "Spice Berry"}, {398, "Grape"}, {402, "Sweet Pea"},
-                
-                // Fall Forageables
-                {281, "Chanterelle"}, {404, "Common Mushroom"}, {406, "Wild Plum"},
-                {408, "Hazelnut"}, {410, "Blackberry"},
-                
-                // Winter Forageables
-                {412, "Winter Root"}, {414, "Crystal Fruit"}, {416, "Snow Yam"},
-                {418, "Crocus"},
-                
-                // Beach Forageables
-                {372, "Clam"}, {718, "Cockle"}, {719, "Mussel"}, {723, "Oyster"},
-                {393, "Coral"}, {397, "Sea Urchin"}, {394, "Rainbow Shell"}
-            };
+                ModEntry.Instance.Monitor.Log($"Found {allForageables.Count} forageable items (vanilla + mods)", LogLevel.Debug);
+            }
+            catch (Exception ex)
+            {
+                ModEntry.Instance.Monitor.Log($"Error loading forageables data: {ex.Message}\n{ex.StackTrace}", LogLevel.Error);
+            }
+
+            // If no forageables found, return empty data
+            if (allForageables.Count == 0)
+            {
+                ModEntry.Instance.Monitor.Log("No forageables found - returning empty data", LogLevel.Warn);
+                return new ForageablesData
+                {
+                    TotalCount = 0,
+                    FoundCount = 0,
+                    DetailItems = new List<CategoryDetailsMenu.DetailItem>()
+                };
+            }
 
             // Calculate found count (items that have been shipped at least once)
             int foundCount = allForageables.Keys.Count(itemId => 
@@ -555,6 +796,8 @@ namespace PerfectionStats
                     IsCompleted = shippedItems.ContainsKey(item.Key.ToString()) && shippedItems[item.Key.ToString()] > 0
                 })
                 .ToList();
+
+            ModEntry.Instance.Monitor.Log($"Forageables stats: {foundCount}/{allForageables.Count} items found", LogLevel.Debug);
 
             return new ForageablesData
             {
@@ -809,10 +1052,26 @@ namespace PerfectionStats
 
         private int CalculateOverallPercent()
         {
+            // Overall Perfection is a pure aggregation of existing category progress
+            // It does NOT recalculate any game data - it only averages the progress
+            // from all dynamically-calculated categories (fish, recipes, museum, etc.)
+            // This ensures consistency with individual progress bars and automatically
+            // includes any content added by mods through those categories.
+            
             if (categories == null || categories.Count == 0) return 0;
-            float sum = 0f;
-            foreach (var c in categories) sum += c.GetProgress();
-            return (int)(sum / categories.Count * 100f);
+            
+            // Sum all category progress values (each category's GetProgress() returns 0.0 to 1.0)
+            float totalProgress = 0f;
+            foreach (var category in categories)
+            {
+                totalProgress += category.GetProgress();
+            }
+            
+            // Calculate average progress across all categories and convert to percentage
+            float averageProgress = totalProgress / categories.Count;
+            int overallPercentage = (int)(averageProgress * 100f);
+            
+            return overallPercentage;
         }
 
         public override void performHoverAction(int x, int y)
